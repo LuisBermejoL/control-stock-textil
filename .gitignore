@@ -1,0 +1,84 @@
+# ===============================================================
+# 1. Credenciales, Contraseñas y Secretos (CRÍTICO PARA GITHUB)
+# ===============================================================
+contraseña_admin.txt
+*contraseña*.txt
+*password*.txt
+*credenciales*.txt
+**/google-services.json
+**/*serviceAccountKey*.json
+**/*service-account*.json
+*.keystore
+*.jks
+.env
+.env.*
+
+# ===============================================================
+# 2. Configuración Interna de Firebase
+# ===============================================================
+firestore.rules
+
+# ===============================================================
+# 3. Documentación Interna, Planes Técnicos y Especificaciones
+# ===============================================================
+*Plan Técnico*
+Plan Técnico - App Android de Control de Stock Textil.pdf
+especificacion_tecnica_para_agente_ia.md
+*.pdf
+
+# ===============================================================
+# 4. Hojas de Cálculo y Datos Reales de Inventario
+# ===============================================================
+*INVENTARIO*
+INVENTARIO PRODUCTOS ALMACEN-Ruth16ABRIL (1)(2).xlsx
+scripts/data/
+scripts/data/*
+*.xlsx
+*.xls
+*.csv
+
+# ===============================================================
+# 5. Android Studio / Gradle y Compilación
+# ===============================================================
+.gradle/
+build/
+**/build/
+local.properties
+*.iml
+.externalNativeBuild/
+.cxx/
+captures/
+
+# Archivos empaquetados generados
+*.apk
+*.ap_
+*.aab
+
+# ===============================================================
+# 6. IDEs y Editores (IntelliJ, Android Studio, VS Code)
+# ===============================================================
+.idea/
+.vscode/
+*.ipr
+*.iws
+
+# ===============================================================
+# 7. Python (Scripts de migración y administración)
+# ===============================================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# ===============================================================
+# 8. Sistema Operativo
+# ===============================================================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini

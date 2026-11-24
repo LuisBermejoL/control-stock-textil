@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_inventario"
+        android:title="Inventario"
+        android:icon="@android:drawable/ic_menu_agenda" />
+
+    <item
+        android:id="@+id/nav_historial"
+        android:title="Historial"
+        android:icon="@android:drawable/ic_menu_recent_history" />
+
+    <item
+        android:id="@+id/nav_excel"
+        android:title="Excel y QR"
+        android:icon="@android:drawable/ic_menu_save" />
+
+    <item
+        android:id="@+id/nav_profesoras"
+        android:title="Profesoras"
+        android:icon="@android:drawable/ic_menu_myplaces" />
+
+</menu>

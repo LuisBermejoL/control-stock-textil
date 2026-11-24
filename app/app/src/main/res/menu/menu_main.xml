@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <!-- Escáner QR con la cámara -->
+    <item
+        android:id="@+id/action_scanner"
+        android:title="Escanear Código"
+        android:icon="@android:drawable/ic_menu_camera"
+        app:showAsAction="always" />
+
+    <!-- Avatar de Perfil de Usuario (Ver, Editar, Cerrar sesión) -->
+    <item
+        android:id="@+id/action_perfil"
+        android:title="Mi Perfil"
+        android:icon="@android:drawable/ic_menu_myplaces"
+        app:showAsAction="always" />
+
+</menu>
