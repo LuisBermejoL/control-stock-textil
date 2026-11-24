@@ -29,13 +29,12 @@ especificacion_tecnica_para_agente_ia.md
 # ===============================================================
 # 4. Hojas de Cálculo y Datos Reales de Inventario
 # ===============================================================
-*INVENTARIO*
-INVENTARIO PRODUCTOS ALMACEN-Ruth16ABRIL (1)(2).xlsx
-scripts/data/
-scripts/data/*
+/*INVENTARIO*
 *.xlsx
 *.xls
 *.csv
+scripts/data/
+scripts/data/*
 
 # ===============================================================
 # 5. Android Studio / Gradle y Compilación
