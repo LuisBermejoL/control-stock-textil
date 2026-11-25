@@ -97,10 +97,10 @@ public class ArticuloAdapter extends RecyclerView.Adapter<ArticuloAdapter.Articu
             }
             binding.tvReferencia.setText(refBuilder.toString());
 
-            // Formatear Stock
+            // Formatear Stock con singular/plural automático
             double stock = a.getStockActual();
             String unidad = a.getUnidadMedida() != null ? a.getUnidadMedida() : "";
-            String stockStr = decimalFormat.format(stock) + " " + unidad;
+            String stockStr = Articulo.formatearStockConUnidad(stock, unidad, decimalFormat);
             binding.tvStockPill.setText(stockStr);
 
             // Cargar imagen con Glide si existe

@@ -1,8 +1,11 @@
 package com.ifpleonardo.controlstocktextil.util;
 
 import android.content.Context;
+import android.net.Uri;
 import android.os.Handler;
 import android.os.Looper;
+
+import androidx.annotation.Nullable;
 
 import org.json.JSONObject;
 
@@ -15,24 +18,22 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 
 /**
- * Gestor de subida de imágenes a Cloudinary CDN (100% gratuito sin servidor intermedio).
+ * Gestor de subida de imágenes a Cloudinary CDN (sin servidor intermedio).
  * 
  * Medidas de seguridad implementadas:
- * 1. Cero credenciales expuestas:
- *    - Se utiliza un Upload Preset de modo 'Unsigned' (sin firma), lo que evita completamente
- *      tener que almacenar la API Secret privada de Cloudinary en el código de la app Android.
- * 2. Conexión cifrada HTTPS:
- *    - La transferencia multipart/form-data viaja exclusivamente por TLS/HTTPS.
- * 3. Aislamiento y organización en carpetas:
- *    - Las fotos se confinan en el directorio virtual 'articulos_textil'.
- * 4. Control de tiempos de espera (Timeouts):
- *    - Connect timeout: 20s, Read timeout: 30s para evitar hilos zombis o consumo de batería.
- * 5. Ejecución en hilo secundario y retorno seguro a hilo principal (MainLooper).
+ * 1. Cero credenciales privadas expuestas:
+ *    - Utiliza un Upload Preset de modo 'Unsigned' sin API Secret en el cliente.
+ * 2. Conexión cifrada HTTPS con validación de origen en respuesta:
+ *    - Transfiere vía HTTPS y valida que la URL resultante pertenezca a res.cloudinary.com.
+ * 3. Separación por carpetas ('articulos_textil' y 'perfiles_textil').
+ * 4. Limpieza automática del archivo temporal comprimido tras finalizar la subida.
  */
 public class CloudinaryUploader {
 
     public static final String CLOUD_NAME = "ts4drobq";
     public static final String UPLOAD_PRESET = "ml_default";
+    public static final String FOLDER_ARTICULOS = "articulos_textil";
+    public static final String FOLDER_PERFILES = "perfiles_textil";
     private static final String UPLOAD_URL = "https://api.cloudinary.com/v1_1/" + CLOUD_NAME + "/image/upload";
 
     public interface UploadCallback {
@@ -41,13 +42,48 @@ public class CloudinaryUploader {
     }
 
     /**
-     * Sube un archivo de imagen comprimido directamente a Cloudinary sin servidor intermedio
-     * usando el Upload Preset 'Unsigned'.
+     * Sube una fotografía de artículo a Cloudinary en la carpeta 'articulos_textil'.
      */
     public static void subirImagen(Context context, File archivoImagen, UploadCallback callback) {
-        Handler mainHandler = new Handler(Looper.getMainLooper());
+        subirImagen(context, archivoImagen, FOLDER_ARTICULOS, callback);
+    }
 
+    /**
+     * Comprime la imagen desde una Uri (aplicando límites de avatar o artículo), borra el fichero
+     * temporal de cámara si existe, sube a Cloudinary y elimina el temporal comprimido al terminar.
+     */
+    public static void comprimirYSubir(Context context, Uri uriOrigen, @Nullable File archivoCamaraTemporal,
+                                       boolean esAvatar, UploadCallback callback) {
+        Handler mainHandler = new Handler(Looper.getMainLooper());
         new Thread(() -> {
+            File archivoComprimido;
+            try {
+                archivoComprimido = esAvatar
+                        ? ImageCompressor.comprimirAvatar(context, uriOrigen)
+                        : ImageCompressor.comprimirImagen(context, uriOrigen);
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError("Error de compresión: " + e.getLocalizedMessage()));
+                return;
+            } finally {
+                if (archivoCamaraTemporal != null && archivoCamaraTemporal.exists()) {
+                    archivoCamaraTemporal.delete();
+                }
+            }
+            subirImagenSync(archivoComprimido, esAvatar ? FOLDER_PERFILES : FOLDER_ARTICULOS, mainHandler, callback);
+        }).start();
+    }
+
+    /**
+     * Sube un archivo de imagen comprimido a la carpeta especificada en Cloudinary
+     * y elimina automáticamente el fichero comprimido temporal tras completar la petición.
+     */
+    public static void subirImagen(Context context, File archivoImagen, String folder, UploadCallback callback) {
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+        String targetFolder = (folder != null && !folder.trim().isEmpty()) ? folder.trim() : FOLDER_ARTICULOS;
+        new Thread(() -> subirImagenSync(archivoImagen, targetFolder, mainHandler, callback)).start();
+    }
+
+    private static void subirImagenSync(File archivoImagen, String targetFolder, Handler mainHandler, UploadCallback callback) {
             HttpURLConnection conn = null;
             DataOutputStream dos = null;
             String boundary = "*****" + System.currentTimeMillis() + "*****";
@@ -73,10 +109,10 @@ public class CloudinaryUploader {
                 dos.writeBytes("Content-Disposition: form-data; name=\"upload_preset\"" + lineEnd + lineEnd);
                 dos.writeBytes(UPLOAD_PRESET + lineEnd);
 
-                // Campo: folder (organizar en carpeta articulos)
+                // Campo: folder
                 dos.writeBytes(twoHyphens + boundary + lineEnd);
                 dos.writeBytes("Content-Disposition: form-data; name=\"folder\"" + lineEnd + lineEnd);
-                dos.writeBytes("articulos_textil" + lineEnd);
+                dos.writeBytes(targetFolder + lineEnd);
 
                 // Archivo binario
                 dos.writeBytes(twoHyphens + boundary + lineEnd);
@@ -111,10 +147,14 @@ public class CloudinaryUploader {
 
                 if (serverResponseCode >= 200 && serverResponseCode < 300) {
                     JSONObject json = new JSONObject(response.toString());
-                    String secureUrl = json.getString("secure_url");
-                    mainHandler.post(() -> callback.onSuccess(secureUrl));
+                    String secureUrl = json.optString("secure_url", "");
+                    if (!secureUrl.startsWith("https://res.cloudinary.com/")) {
+                        mainHandler.post(() -> callback.onError("Respuesta inesperada del servidor de imágenes."));
+                    } else {
+                        mainHandler.post(() -> callback.onSuccess(secureUrl));
+                    }
                 } else {
-                    String errorMsg = "Error en Cloudinary (" + serverResponseCode + "): " + response.toString();
+                    String errorMsg = "Error en Cloudinary (" + serverResponseCode + "): " + response;
                     mainHandler.post(() -> callback.onError(errorMsg));
                 }
 
@@ -127,7 +167,9 @@ public class CloudinaryUploader {
                 if (conn != null) {
                     conn.disconnect();
                 }
+                if (archivoImagen != null && archivoImagen.exists()) {
+                    archivoImagen.delete();
+                }
             }
-        }).start();
     }
 }

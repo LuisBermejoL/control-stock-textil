@@ -9,6 +9,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.FileProvider;
 
@@ -16,10 +17,11 @@ import com.bumptech.glide.Glide;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.ifpleonardo.controlstocktextil.data.model.Articulo;
 import com.ifpleonardo.controlstocktextil.data.model.Ubicacion;
+import com.ifpleonardo.controlstocktextil.data.model.Usuario;
+import com.ifpleonardo.controlstocktextil.data.repository.AuthRepository;
 import com.ifpleonardo.controlstocktextil.data.repository.InventarioRepository;
 import com.ifpleonardo.controlstocktextil.databinding.ActivityEditarArticuloBinding;
 import com.ifpleonardo.controlstocktextil.util.CloudinaryUploader;
-import com.ifpleonardo.controlstocktextil.util.ImageCompressor;
 
 import java.io.File;
 
@@ -41,6 +43,7 @@ public class EditarArticuloActivity extends AppCompatActivity {
     private boolean esNuevo = true;
     private String imagenUrlSubida = "";
     private Uri cameraTempUri;
+    private File cameraTempFile;
 
     private static final String[] CATEGORIAS = {
             "HILOS", "ENTRETELA", "TEJIDO", "FORRO",
@@ -55,20 +58,33 @@ public class EditarArticuloActivity extends AppCompatActivity {
     private final ActivityResultLauncher<String> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
-                    subirFotoACloudinary(uri);
+                    subirFotoACloudinary(uri, null);
                 }
             });
 
     private final ActivityResultLauncher<Uri> cameraLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success) && cameraTempUri != null) {
-                    subirFotoACloudinary(cameraTempUri);
+                    File temp = cameraTempFile;
+                    cameraTempFile = null;
+                    subirFotoACloudinary(cameraTempUri, temp);
+                } else if (cameraTempFile != null) {
+                    cameraTempFile.delete();
+                    cameraTempFile = null;
                 }
             });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (usuario == null || !usuario.isAdmin()) {
+            Toast.makeText(this, "Acceso restringido a administradores", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         binding = ActivityEditarArticuloBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
@@ -145,14 +161,25 @@ public class EditarArticuloActivity extends AppCompatActivity {
     }
 
     private void mostrarDialogoSeleccionFoto() {
-        String[] opciones = {"📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería"};
+        boolean tieneFoto = imagenUrlSubida != null && !imagenUrlSubida.trim().isEmpty();
+        String[] opciones;
+        if (tieneFoto) {
+            opciones = new String[]{"📷 Tomar nueva foto con la Cámara", "🖼️ Seleccionar de la Galería", "🗑️ Quitar foto"};
+        } else {
+            opciones = new String[]{"📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería"};
+        }
+
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Foto del Tejido / Producto")
                 .setItems(opciones, (dialog, which) -> {
                     if (which == 0) {
                         lanzarCamara();
-                    } else {
+                    } else if (which == 1) {
                         galleryLauncher.launch("image/*");
+                    } else if (which == 2) {
+                        imagenUrlSubida = "";
+                        mostrarFoto();
+                        Toast.makeText(this, "Foto retirada", Toast.LENGTH_SHORT).show();
                     }
                 })
                 .setNegativeButton("Cancelar", null)
@@ -162,6 +189,7 @@ public class EditarArticuloActivity extends AppCompatActivity {
     private void lanzarCamara() {
         try {
             File tempFile = new File(getCacheDir(), "cam_edit_" + System.currentTimeMillis() + ".jpg");
+            cameraTempFile = tempFile;
             cameraTempUri = FileProvider.getUriForFile(
                     this, getPackageName() + ".fileprovider", tempFile);
             cameraLauncher.launch(cameraTempUri);
@@ -170,42 +198,29 @@ public class EditarArticuloActivity extends AppCompatActivity {
         }
     }
 
-    private void subirFotoACloudinary(Uri uri) {
+    private void subirFotoACloudinary(Uri uri, @Nullable File archivoCamaraTemporal) {
         binding.pbSubiendoFotoEditar.setVisibility(View.VISIBLE);
         binding.btnCambiarFotoEditar.setEnabled(false);
 
-        new Thread(() -> {
-            try {
-                File archivoComprimido = ImageCompressor.comprimirImagen(EditarArticuloActivity.this, uri);
-                CloudinaryUploader.subirImagen(EditarArticuloActivity.this, archivoComprimido, new CloudinaryUploader.UploadCallback() {
-                    @Override
-                    public void onSuccess(String imageUrl) {
-                        runOnUiThread(() -> {
-                            binding.pbSubiendoFotoEditar.setVisibility(View.GONE);
-                            binding.btnCambiarFotoEditar.setEnabled(true);
-                            imagenUrlSubida = imageUrl;
-                            mostrarFoto();
-                            Toast.makeText(EditarArticuloActivity.this, "Foto subida con éxito", Toast.LENGTH_SHORT).show();
-                        });
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        runOnUiThread(() -> {
-                            binding.pbSubiendoFotoEditar.setVisibility(View.GONE);
-                            binding.btnCambiarFotoEditar.setEnabled(true);
-                            Toast.makeText(EditarArticuloActivity.this, "Error al subir: " + error, Toast.LENGTH_LONG).show();
-                        });
-                    }
-                });
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    binding.pbSubiendoFotoEditar.setVisibility(View.GONE);
-                    binding.btnCambiarFotoEditar.setEnabled(true);
-                    Toast.makeText(EditarArticuloActivity.this, "Error de compresión: " + e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
-                });
+        CloudinaryUploader.comprimirYSubir(getApplicationContext(), uri, archivoCamaraTemporal, false, new CloudinaryUploader.UploadCallback() {
+            @Override
+            public void onSuccess(String imageUrl) {
+                if (isFinishing() || isDestroyed()) return;
+                binding.pbSubiendoFotoEditar.setVisibility(View.GONE);
+                binding.btnCambiarFotoEditar.setEnabled(true);
+                imagenUrlSubida = imageUrl;
+                mostrarFoto();
+                Toast.makeText(EditarArticuloActivity.this, "Foto subida con éxito", Toast.LENGTH_SHORT).show();
             }
-        }).start();
+
+            @Override
+            public void onError(String error) {
+                if (isFinishing() || isDestroyed()) return;
+                binding.pbSubiendoFotoEditar.setVisibility(View.GONE);
+                binding.btnCambiarFotoEditar.setEnabled(true);
+                Toast.makeText(EditarArticuloActivity.this, error, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void setupListeners() {
@@ -239,11 +254,25 @@ public class EditarArticuloActivity extends AppCompatActivity {
             stockActual = Double.parseDouble(stockStr.replace(",", "."));
         } catch (NumberFormatException ignored) {}
 
+        if (stockActual < 0 || Double.isNaN(stockActual)) {
+            binding.tilStockActual.setError("No puede ser negativo");
+            return;
+        } else {
+            binding.tilStockActual.setError(null);
+        }
+
         double stockMinimo = 0.0;
         try {
             String minStr = binding.etStockMinimo.getText() != null ? binding.etStockMinimo.getText().toString().trim() : "0";
             stockMinimo = Double.parseDouble(minStr.replace(",", "."));
         } catch (NumberFormatException ignored) {}
+
+        if (stockMinimo < 0 || Double.isNaN(stockMinimo)) {
+            binding.tilStockMinimo.setError("No puede ser negativo");
+            return;
+        } else {
+            binding.tilStockMinimo.setError(null);
+        }
 
         String subtipo = binding.etSubtipo.getText() != null ? binding.etSubtipo.getText().toString().trim() : "";
         String unidadMedida = binding.actvUnidadMedida.getText().toString().trim();

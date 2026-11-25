@@ -3,6 +3,7 @@ package com.ifpleonardo.controlstocktextil.data.model;
 import com.google.firebase.firestore.DocumentId;
 
 import java.io.Serializable;
+import java.text.DecimalFormat;
 
 /**
  * Modelo de datos representativo de un Artículo en el inventario textil.
@@ -233,5 +234,76 @@ public class Articulo implements Serializable {
             else sb.append(color);
         }
         return sb.length() > 0 ? sb.toString() : (referencia != null ? referencia : "Sin nombre");
+    }
+
+    /**
+     * Devuelve la unidad de medida en singular si la cantidad es exactamente 1 (1.0),
+     * o en plural si la cantidad es menor que 1 (p. ej. 0, 0.5) o mayor que 1 (p. ej. 1.5, 2, 10).
+     */
+    public static String formatearUnidad(double cantidad, String unidad) {
+        if (unidad == null || unidad.trim().isEmpty()) {
+            return "";
+        }
+        String uTrim = unidad.trim();
+        String uUpper = uTrim.toUpperCase();
+        boolean esMayusculaTotal = uTrim.equals(uUpper);
+        boolean esSingular = Math.abs(cantidad - 1.0) < 0.0001;
+
+        String singular;
+        String plural;
+
+        if (uUpper.equals("METRO") || uUpper.equals("METROS")) {
+            singular = "METRO";
+            plural = "METROS";
+        } else if (uUpper.equals("BOBINA") || uUpper.equals("BOBINAS")) {
+            singular = "BOBINA";
+            plural = "BOBINAS";
+        } else if (uUpper.equals("UNIDAD") || uUpper.equals("UNIDADES") || uUpper.equals("UDS") || uUpper.equals("UD")) {
+            singular = "UNIDAD";
+            plural = "UNIDADES";
+        } else if (uUpper.equals("ROLLO") || uUpper.equals("ROLLOS")) {
+            singular = "ROLLO";
+            plural = "ROLLOS";
+        } else if (uUpper.equals("PIEZA") || uUpper.equals("PIEZAS")) {
+            singular = "PIEZA";
+            plural = "PIEZAS";
+        } else {
+            if (uUpper.endsWith("ES")) {
+                singular = uUpper.substring(0, uUpper.length() - 2);
+                plural = uUpper;
+            } else if (uUpper.endsWith("S")) {
+                singular = uUpper.substring(0, uUpper.length() - 1);
+                plural = uUpper;
+            } else {
+                singular = uUpper;
+                plural = uUpper + "S";
+            }
+        }
+
+        String res = esSingular ? singular : plural;
+        if (!esMayusculaTotal) {
+            res = res.toLowerCase();
+        }
+        return res;
+    }
+
+    /**
+     * Formatea un valor numérico de stock con su unidad correcta en singular o plural.
+     */
+    public static String formatearStockConUnidad(double cantidad, String unidad, DecimalFormat df) {
+        String u = formatearUnidad(cantidad, unidad);
+        return df.format(cantidad) + (u.isEmpty() ? "" : " " + u);
+    }
+
+    /**
+     * Formatea el número de rollos en singular o plural.
+     */
+    public static String formatearRollos(Integer rollos) {
+        int r = rollos != null ? rollos : 0;
+        if (r == 1) {
+            return "1 rollo";
+        } else {
+            return r + " rollos";
+        }
     }
 }

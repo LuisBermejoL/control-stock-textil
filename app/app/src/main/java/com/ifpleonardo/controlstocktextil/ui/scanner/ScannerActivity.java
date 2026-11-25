@@ -160,12 +160,23 @@ public class ScannerActivity extends AppCompatActivity {
     }
 
     private void buscarArticuloPorCodigo(String codigo) {
+        if (codigo == null || codigo.trim().isEmpty()) {
+            mostrarDialogoNoEncontrado("");
+            return;
+        }
+        String codigoLimpio = codigo.trim();
         binding.progressScanner.setVisibility(View.VISIBLE);
+
+        // Firestore prohíbe '/' en IDs de documento; si el QR es una URL o ruta externa, evitar excepción síncrona
+        if (codigoLimpio.contains("/")) {
+            buscarPorReferencia(codigoLimpio);
+            return;
+        }
 
         FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         // 1. Intentar buscar por documento directo (ID)
-        db.collection("articulos").document(codigo).get()
+        db.collection("articulos").document(codigoLimpio).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
                         Articulo articulo = documentSnapshot.toObject(Articulo.class);
@@ -176,9 +187,9 @@ public class ScannerActivity extends AppCompatActivity {
                         }
                     }
                     // 2. Si no es un ID directo, buscar por campo "referencia"
-                    buscarPorReferencia(codigo);
+                    buscarPorReferencia(codigoLimpio);
                 })
-                .addOnFailureListener(e -> buscarPorReferencia(codigo));
+                .addOnFailureListener(e -> buscarPorReferencia(codigoLimpio));
     }
 
     private void buscarPorReferencia(String referencia) {

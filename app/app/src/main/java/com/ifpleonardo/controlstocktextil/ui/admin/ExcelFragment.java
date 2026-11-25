@@ -65,6 +65,12 @@ public class ExcelFragment extends Fragment {
         boolean esAdmin = usuario != null && usuario.isAdmin();
         binding.cardImportar.setVisibility(esAdmin ? View.VISIBLE : View.GONE);
 
+        AuthRepository.getInstance().getUsuarioActualLiveData().observe(getViewLifecycleOwner(), u -> {
+            if (binding != null) {
+                binding.cardImportar.setVisibility(u != null && u.isAdmin() ? View.VISIBLE : View.GONE);
+            }
+        });
+
         setupListeners();
     }
 
@@ -72,7 +78,8 @@ public class ExcelFragment extends Fragment {
         binding.btnGenerarPdfEtiquetas.setOnClickListener(v -> generarPdfEtiquetas());
         binding.btnExportarExcel.setOnClickListener(v -> exportarInventario(true));
         binding.btnExportarCsv.setOnClickListener(v -> exportarInventario(false));
-        binding.btnImportarExcel.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
+        binding.btnImportarExcel.setOnClickListener(v ->
+                filePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
     }
 
     private void generarPdfEtiquetas() {
@@ -89,7 +96,7 @@ public class ExcelFragment extends Fragment {
                 if (getActivity() != null) {
                     getActivity().runOnUiThread(() -> {
                         setLoading(false);
-                        QrCodeGenerator.compartirOImprimirPdf(requireContext(), pdfFile);
+                        mostrarOpcionesArchivoGenerado(pdfFile, "application/pdf", true);
                     });
                 }
             } catch (Exception e) {
@@ -119,8 +126,8 @@ public class ExcelFragment extends Fragment {
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             setLoading(false);
-                            ExcelManager.compartirArchivo(requireContext(), archivo,
-                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+                            mostrarOpcionesArchivoGenerado(archivo,
+                                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", false);
                         });
                     }
                 }
@@ -142,7 +149,7 @@ public class ExcelFragment extends Fragment {
                     if (getActivity() != null) {
                         getActivity().runOnUiThread(() -> {
                             setLoading(false);
-                            ExcelManager.compartirArchivo(requireContext(), archivo, "text/csv");
+                            mostrarOpcionesArchivoGenerado(archivo, "text/csv", false);
                         });
                     }
                 }
@@ -160,7 +167,70 @@ public class ExcelFragment extends Fragment {
         }
     }
 
+    private void mostrarOpcionesArchivoGenerado(File archivo, String mimeType, boolean esPdfQr) {
+        android.view.View dialogView = LayoutInflater.from(requireContext())
+                .inflate(com.ifpleonardo.controlstocktextil.R.layout.dialog_archivo_listo, null);
+
+        android.widget.TextView tvMensaje = dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.tvArchivoNombreMensaje);
+        tvMensaje.setText("¿Qué deseas hacer con \"" + archivo.getName() + "\"?");
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(requireContext())
+                .setView(dialogView)
+                .create();
+
+        dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.btnGuardarEnDescargas).setOnClickListener(v -> {
+            dialog.dismiss();
+            setLoading(true);
+            ExcelManager.guardarEnDescargas(requireContext(), archivo, mimeType, new ExcelManager.ExportCallback() {
+                @Override
+                public void onSuccess(File guardado) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            setLoading(false);
+                            Toast.makeText(requireContext(),
+                                    "Guardado en la carpeta Descargas: " + archivo.getName(),
+                                    Toast.LENGTH_LONG).show();
+                        });
+                    }
+                }
+
+                @Override
+                public void onError(String error) {
+                    if (getActivity() != null) {
+                        getActivity().runOnUiThread(() -> {
+                            setLoading(false);
+                            Toast.makeText(requireContext(), error, Toast.LENGTH_LONG).show();
+                        });
+                    }
+                }
+            });
+        });
+
+        dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.btnCompartirArchivo).setOnClickListener(v -> {
+            dialog.dismiss();
+            if (esPdfQr) {
+                QrCodeGenerator.compartirOImprimirPdf(requireContext(), archivo);
+            } else {
+                ExcelManager.compartirArchivo(requireContext(), archivo, mimeType);
+            }
+        });
+
+        dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.btnCerrarDialogoArchivo).setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
     private void procesarArchivoExcelSeleccionado(Uri uri) {
+        Usuario u = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (u == null || !u.isAdmin()) {
+            Toast.makeText(requireContext(), "Solo el rol ADMIN puede importar Excel", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String errorValidacion = ExcelManager.validarArchivoImportacion(requireContext(), uri);
+        if (errorValidacion != null) {
+            Toast.makeText(requireContext(), errorValidacion, Toast.LENGTH_LONG).show();
+            return;
+        }
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Confirmar importación de Excel")
                 .setMessage("Se procesarán las hojas del archivo para sincronizar el catálogo. Los artículos existentes se actualizarán y los nuevos se registrarán. ¿Deseas continuar?")

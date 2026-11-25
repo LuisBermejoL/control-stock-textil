@@ -32,23 +32,27 @@ Desarrollada con **Java, Material Design 3, arquitectura MVVM, Firebase (Cloud F
 * **Importación masiva (.xlsx):** Sincronización del catálogo mediante hojas de cálculo Excel utilizando la biblioteca FastExcel (sin dependencias lentas de AWT).
 * **Protección contra inyección CSV:** Sanitización de celdas para mitigar ataques de fórmulas maliciosas (CWE-1236).
 
-### 6. Roles y Gestión de Usuarias
-* **Doble perfil:** `ADMIN` (Jefatura de almacén/taller) y `PROFESORA` (Docentes y usuarias autorizadas).
-* **Autoregistro desde Login:** Las usuarias pueden crear su cuenta directamente (asignando siempre el rol base `PROFESORA`).
-* **Desactivación lógica:** Nunca se eliminan usuarias físicamente de la base de datos para preservar la autoría histórica de todos los movimientos.
+### 6. Roles y Gestión de Usuarios (Principio de Mínimo Privilegio)
+* **Tres niveles de acceso:**
+  - `LECTOR`: Rol asignado por defecto en el autoregistro desde el Login. Permite únicamente consultar el catálogo, ver el historial y exportar/descargar Excel, CSV o etiquetas QR.
+  - `PROFESOR/A`: Asignado por un administrador; habilita el registro de movimientos de stock y la edición de fotografías de artículos.
+  - `ADMIN`: Control total sobre el catálogo, importación masiva de Excel y gestión de usuarios/roles.
+* **Desactivación lógica:** Nunca se eliminan usuarios físicamente de la base de datos para preservar la autoría histórica de todos los movimientos, y las bajas bloquean el acceso en tiempo real.
 
 ---
 
 ## 🔒 Auditoría de Seguridad y Buenas Prácticas
 
 1. **Reglas de Seguridad de Cloud Firestore:**
-   - Autenticación obligatoria para lectura y operaciones.
-   - Creación y borrado de artículos reservado exclusivamente a rol `ADMIN`.
-   - Historial de movimientos estrictamente inmutable (`allow update, delete: if false`).
-   - Mitigación de escalada de privilegios en el autoregistro (imposibilita asignarse rol `ADMIN` a sí misma).
+   - Validación obligatoria de cuenta activa (`activo == true`) en servidor para todas las operaciones.
+   - Autoregistro restringido a rol `LECTOR` (imposibilita escalada de privilegios o modificación de stock por usuarios no aprobados).
+   - Actualización de artículos por `PROFESOR/A` limitada únicamente a `stockActual` (>= 0) e `imagenUrl`.
+   - Historial de movimientos estrictamente inmutable (`allow update, delete: if false`) con verificación de identidad (`usuarioId == request.auth.uid`).
 2. **Seguridad en Android:**
-   - Componentes internos no exportados (`android:exported="false"`).
-   - Uso de `FileProvider` con permisos temporales de lectura para compartir PDFs e imágenes.
+   - `android:allowBackup="false"` para evitar copias no cifradas de sesión y caché local.
+   - Componentes internos no exportados (`android:exported="false"`) y verificación de rol en actividades administrativas.
+   - Uso de `FileProvider` con permisos temporales de lectura y almacenamiento público vía `MediaStore.Downloads`.
+   - Limpieza automática de metadatos EXIF privados y archivos temporales en caché al comprimir y subir imágenes.
    - Cero credenciales o claves privadas hardcodeadas en el código fuente.
 3. **ProGuard / R8:**
    - Reglas configuradas en `proguard-rules.pro` para mantener intactos los modelos de Firestore (`Articulo`, `Ubicacion`, `Usuario`, `Movimiento`).
@@ -82,42 +86,59 @@ service cloud.firestore {
     function isSignedIn() {
       return request.auth != null;
     }
-    function isAdmin() {
-      return isSignedIn() &&
-        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.rol == 'ADMIN';
+
+    function currentUserDoc() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid));
     }
 
-    // Colección de Usuarios:
-    // - Lectura para cualquier usuaria autenticada.
-    // - Autoregistro restringido a rol 'PROFESORA'.
-    // - Solo ADMIN puede modificar roles o desactivar usuarias.
+    function isActiveUser() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) &&
+        currentUserDoc().data.activo == true;
+    }
+
+    function isAdmin() {
+      return isActiveUser() && currentUserDoc().data.rol == 'ADMIN';
+    }
+
+    function canModifyStock() {
+      return isActiveUser() && (
+        currentUserDoc().data.rol == 'ADMIN' ||
+        currentUserDoc().data.rol == 'PROFESORA'
+      );
+    }
+
     match /usuarios/{userId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
       allow create: if isSignedIn() && (
-        (request.auth.uid == userId && request.resource.data.rol == 'PROFESORA') ||
+        (request.auth.uid == userId &&
+         request.resource.data.rol == 'LECTOR' &&
+         request.resource.data.activo == true) ||
         isAdmin()
       );
-      allow update: if (isAdmin()) || 
-                       (isSignedIn() && request.auth.uid == userId && 
-                        request.resource.data.rol == resource.data.rol && 
+      allow update: if isAdmin() ||
+                       (isActiveUser() &&
+                        request.auth.uid == userId &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nombre', 'fotoUrl']) &&
+                        request.resource.data.rol == resource.data.rol &&
                         request.resource.data.activo == resource.data.activo);
       allow delete: if isAdmin();
     }
 
-    // Colección de Artículos de Inventario:
-    // - Creación y borrado reservados a ADMIN.
-    // - Modificación de stock mediante transacciones permitida a usuarias autenticadas.
     match /articulos/{articuloId} {
-      allow read: if isSignedIn();
+      allow read: if isActiveUser();
       allow create, delete: if isAdmin();
-      allow update: if isSignedIn();
+      allow update: if isAdmin() ||
+                       (canModifyStock() &&
+                        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stockActual', 'imagenUrl']) &&
+                        request.resource.data.stockActual >= 0);
     }
 
-    // Historial de Movimientos:
-    // - Registro inmutable: no permite edición ni borrado a ningún usuario.
     match /movimientos/{movimientoId} {
-      allow read, create: if isSignedIn();
+      allow read: if isActiveUser();
+      allow create: if canModifyStock() &&
+                       request.resource.data.usuarioId == request.auth.uid &&
+                       request.resource.data.stockResultante >= 0;
       allow update, delete: if false;
     }
   }

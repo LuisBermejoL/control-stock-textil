@@ -12,6 +12,7 @@ import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -28,7 +29,6 @@ import com.ifpleonardo.controlstocktextil.data.repository.AuthRepository;
 import com.ifpleonardo.controlstocktextil.data.repository.InventarioRepository;
 import com.ifpleonardo.controlstocktextil.databinding.ActivityDetalleArticuloBinding;
 import com.ifpleonardo.controlstocktextil.util.CloudinaryUploader;
-import com.ifpleonardo.controlstocktextil.util.ImageCompressor;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -54,18 +54,24 @@ public class DetalleArticuloActivity extends AppCompatActivity {
     private boolean esAdmin = false;
 
     private Uri cameraTempUri;
+    private File cameraTempFile;
 
     private final ActivityResultLauncher<String> galleryLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
-                    subirFotoACloudinary(uri);
+                    subirFotoACloudinary(uri, null);
                 }
             });
 
     private final ActivityResultLauncher<Uri> cameraLauncher =
             registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success) && cameraTempUri != null) {
-                    subirFotoACloudinary(cameraTempUri);
+                    File temp = cameraTempFile;
+                    cameraTempFile = null;
+                    subirFotoACloudinary(cameraTempUri, temp);
+                } else if (cameraTempFile != null) {
+                    cameraTempFile.delete();
+                    cameraTempFile = null;
                 }
             });
 
@@ -89,10 +95,29 @@ public class DetalleArticuloActivity extends AppCompatActivity {
 
         Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
         esAdmin = usuario != null && usuario.isAdmin();
+        boolean puedeModificar = usuario != null && usuario.puedeModificarStock();
 
         setupListeners();
+        aplicarPermisosUsuario(puedeModificar);
         mostrarDatosArticulo();
         iniciarEscuchaTiempoReal();
+
+        AuthRepository.getInstance().getUsuarioActualLiveData().observe(this, u -> {
+            if (u == null) {
+                finish();
+                return;
+            }
+            esAdmin = u.isAdmin();
+            invalidateOptionsMenu();
+            aplicarPermisosUsuario(u.puedeModificarStock());
+        });
+    }
+
+    private void aplicarPermisosUsuario(boolean puedeModificar) {
+        binding.fabRegistrarMovimiento.setVisibility(puedeModificar ? View.VISIBLE : View.GONE);
+        binding.btnCambiarFoto.setVisibility(puedeModificar ? View.VISIBLE : View.GONE);
+        binding.cardFotoArticulo.setClickable(puedeModificar);
+        binding.cardFotoArticulo.setEnabled(puedeModificar);
     }
 
     private void iniciarEscuchaTiempoReal() {
@@ -119,18 +144,18 @@ public class DetalleArticuloActivity extends AppCompatActivity {
         binding.tvDetalleNombre.setText(articulo.getNombreCompleto());
         binding.tvDetalleReferencia.setText("Referencia: " + (articulo.getReferencia() != null ? articulo.getReferencia() : "Sin referencia"));
 
-        // Stock y Badge
+        // Stock y Badge con singular/plural automático
         double stock = articulo.getStockActual();
         String unidad = articulo.getUnidadMedida() != null ? articulo.getUnidadMedida() : "";
-        binding.tvDetalleStockPill.setText(decimalFormat.format(stock) + " " + unidad);
+        binding.tvDetalleStockPill.setText(Articulo.formatearStockConUnidad(stock, unidad, decimalFormat));
 
         if (stock <= 0) {
             binding.tvDetalleAlerta.setVisibility(View.VISIBLE);
-            binding.tvDetalleAlerta.setText("❌ Stock Agotado (0 " + unidad + ")");
+            binding.tvDetalleAlerta.setText("❌ Stock Agotado (" + Articulo.formatearStockConUnidad(0, unidad, decimalFormat) + ")");
             binding.tvDetalleStockPill.setTextColor(Color.RED);
         } else if (articulo.isBajoMinimos()) {
             binding.tvDetalleAlerta.setVisibility(View.VISIBLE);
-            binding.tvDetalleAlerta.setText("⚠️ Stock bajo mínimos (Mínimo: " + decimalFormat.format(articulo.getStockMinimo()) + " " + unidad + ")");
+            binding.tvDetalleAlerta.setText("⚠️ Stock bajo mínimos (Mínimo: " + Articulo.formatearStockConUnidad(articulo.getStockMinimo(), unidad, decimalFormat) + ")");
             binding.tvDetalleStockPill.setTextColor(ContextCompat.getColor(this, android.R.color.holo_orange_dark));
         } else {
             binding.tvDetalleAlerta.setVisibility(View.GONE);
@@ -156,7 +181,7 @@ public class DetalleArticuloActivity extends AppCompatActivity {
         }
         binding.tvDetalleAncho.setText("Ancho útil: " + anchoStr);
 
-        binding.tvDetalleRollos.setText("Nº de rollos/piezas: " + (articulo.getNumRollos() != null ? articulo.getNumRollos() : 0));
+        binding.tvDetalleRollos.setText("Nº de rollos/piezas: " + Articulo.formatearRollos(articulo.getNumRollos()));
 
         String precioStr = articulo.getPrecioPorMetro() != null ? decimalFormat.format(articulo.getPrecioPorMetro()) + " € / metro" : "No especificado";
         binding.tvDetallePrecio.setText("Precio: " + precioStr);
@@ -192,14 +217,47 @@ public class DetalleArticuloActivity extends AppCompatActivity {
     }
 
     private void mostrarDialogoSeleccionFoto() {
-        String[] opciones = {"📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería"};
+        Usuario usuarioActual = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (usuarioActual == null || !usuarioActual.puedeModificarStock()) {
+            Toast.makeText(this, "Modo solo lectura: necesitas rol Profesor/a para modificar fotos", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        boolean tieneFoto = articulo.getImagenUrl() != null && !articulo.getImagenUrl().trim().isEmpty();
+        String[] opciones;
+        if (tieneFoto) {
+            opciones = new String[]{"📷 Tomar nueva foto con la Cámara", "🖼️ Seleccionar de la Galería", "🗑️ Quitar / Eliminar foto actual"};
+        } else {
+            opciones = new String[]{"📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería"};
+        }
+
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Foto del Tejido / Producto")
                 .setItems(opciones, (dialog, which) -> {
                     if (which == 0) {
                         lanzarCamara();
-                    } else {
+                    } else if (which == 1) {
                         galleryLauncher.launch("image/*");
+                    } else if (which == 2) {
+                        eliminarFotoArticulo();
+                    }
+                })
+                .setNegativeButton("Cancelar", null)
+                .show();
+    }
+
+    private void eliminarFotoArticulo() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Eliminar fotografía")
+                .setMessage("¿Estás segura de que deseas quitar la foto de este artículo?")
+                .setPositiveButton("Sí, eliminar", (dialog, which) -> {
+                    articulo.setImagenUrl("");
+                    mostrarFotoArticulo();
+                    if (articulo.getId() != null) {
+                        FirebaseFirestore.getInstance().collection("articulos")
+                                .document(articulo.getId())
+                                .update("imagenUrl", "")
+                                .addOnSuccessListener(aVoid -> Toast.makeText(this, "Foto eliminada con éxito", Toast.LENGTH_SHORT).show())
+                                .addOnFailureListener(e -> Toast.makeText(this, "Error al quitar foto: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show());
                     }
                 })
                 .setNegativeButton("Cancelar", null)
@@ -209,6 +267,7 @@ public class DetalleArticuloActivity extends AppCompatActivity {
     private void lanzarCamara() {
         try {
             File tempFile = new File(getCacheDir(), "cam_" + System.currentTimeMillis() + ".jpg");
+            cameraTempFile = tempFile;
             cameraTempUri = FileProvider.getUriForFile(
                     this, getPackageName() + ".fileprovider", tempFile);
             cameraLauncher.launch(cameraTempUri);
@@ -217,48 +276,35 @@ public class DetalleArticuloActivity extends AppCompatActivity {
         }
     }
 
-    private void subirFotoACloudinary(Uri uri) {
+    private void subirFotoACloudinary(Uri uri, @Nullable File archivoCamaraTemporal) {
         binding.pbSubiendoFoto.setVisibility(View.VISIBLE);
         binding.btnCambiarFoto.setEnabled(false);
 
-        new Thread(() -> {
-            try {
-                File archivoComprimido = ImageCompressor.comprimirImagen(DetalleArticuloActivity.this, uri);
-                CloudinaryUploader.subirImagen(DetalleArticuloActivity.this, archivoComprimido, new CloudinaryUploader.UploadCallback() {
-                    @Override
-                    public void onSuccess(String imageUrl) {
-                        runOnUiThread(() -> {
-                            binding.pbSubiendoFoto.setVisibility(View.GONE);
-                            binding.btnCambiarFoto.setEnabled(true);
-                            articulo.setImagenUrl(imageUrl);
-                            mostrarFotoArticulo();
+        CloudinaryUploader.comprimirYSubir(getApplicationContext(), uri, archivoCamaraTemporal, false, new CloudinaryUploader.UploadCallback() {
+            @Override
+            public void onSuccess(String imageUrl) {
+                if (isFinishing() || isDestroyed()) return;
+                binding.pbSubiendoFoto.setVisibility(View.GONE);
+                binding.btnCambiarFoto.setEnabled(true);
+                articulo.setImagenUrl(imageUrl);
+                mostrarFotoArticulo();
 
-                            if (articulo.getId() != null) {
-                                FirebaseFirestore.getInstance().collection("articulos")
-                                        .document(articulo.getId())
-                                        .update("imagenUrl", imageUrl);
-                            }
-                            Toast.makeText(DetalleArticuloActivity.this, "Foto guardada con éxito", Toast.LENGTH_SHORT).show();
-                        });
-                    }
-
-                    @Override
-                    public void onError(String error) {
-                        runOnUiThread(() -> {
-                            binding.pbSubiendoFoto.setVisibility(View.GONE);
-                            binding.btnCambiarFoto.setEnabled(true);
-                            Toast.makeText(DetalleArticuloActivity.this, "Error al subir foto: " + error, Toast.LENGTH_LONG).show();
-                        });
-                    }
-                });
-            } catch (Exception e) {
-                runOnUiThread(() -> {
-                    binding.pbSubiendoFoto.setVisibility(View.GONE);
-                    binding.btnCambiarFoto.setEnabled(true);
-                    Toast.makeText(DetalleArticuloActivity.this, "Error de compresión: " + e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
-                });
+                if (articulo.getId() != null) {
+                    FirebaseFirestore.getInstance().collection("articulos")
+                            .document(articulo.getId())
+                            .update("imagenUrl", imageUrl);
+                }
+                Toast.makeText(DetalleArticuloActivity.this, "Foto guardada con éxito", Toast.LENGTH_SHORT).show();
             }
-        }).start();
+
+            @Override
+            public void onError(String error) {
+                if (isFinishing() || isDestroyed()) return;
+                binding.pbSubiendoFoto.setVisibility(View.GONE);
+                binding.btnCambiarFoto.setEnabled(true);
+                Toast.makeText(DetalleArticuloActivity.this, error, Toast.LENGTH_LONG).show();
+            }
+        });
     }
 
     private void setupListeners() {

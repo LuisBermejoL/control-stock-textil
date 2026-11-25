@@ -139,8 +139,24 @@ public class InventarioRepository {
 
     public void registrarMovimiento(String articuloId, String tipo, double cantidad,
             String observaciones, TransactionCallback callback) {
+        Usuario usuarioActual = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (usuarioActual == null || !usuarioActual.puedeModificarStock()) {
+            callback.onError("Modo solo lectura: necesitas rol Profesor/a para registrar movimientos.");
+            return;
+        }
+
         if (articuloId == null || articuloId.trim().isEmpty()) {
             callback.onError("ID de artículo inválido");
+            return;
+        }
+
+        if (Double.isNaN(cantidad) || Double.isInfinite(cantidad)) {
+            callback.onError("Cantidad numérica inválida");
+            return;
+        }
+
+        if (!"AJUSTE".equals(tipo) && cantidad <= 0) {
+            callback.onError("La cantidad debe ser mayor que 0");
             return;
         }
 
@@ -195,7 +211,7 @@ public class InventarioRepository {
             // 2. Registrar el movimiento inmutable
             Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
             String usuarioId = usuario != null ? usuario.getId() : AuthRepository.getInstance().getCurrentUid();
-            String usuarioNombre = usuario != null ? usuario.getNombre() : "Profesora";
+            String usuarioNombre = usuario != null ? usuario.getNombre() : "Usuario";
 
             Map<String, Object> movimientoData = new HashMap<>();
             movimientoData.put("articuloId", articuloId);
@@ -227,6 +243,16 @@ public class InventarioRepository {
     }
 
     public void guardarArticulo(Articulo articulo, OperationCallback callback) {
+        Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (usuario == null || !usuario.isAdmin()) {
+            callback.onError("Acceso denegado: solo el rol ADMIN puede crear o editar artículos.");
+            return;
+        }
+        if (articulo.getStockActual() < 0 || articulo.getStockMinimo() < 0) {
+            callback.onError("El stock actual y mínimo no pueden ser negativos.");
+            return;
+        }
+
         DocumentReference ref;
         if (articulo.getId() != null && !articulo.getId().trim().isEmpty()) {
             ref = db.collection("articulos").document(articulo.getId());
@@ -240,6 +266,11 @@ public class InventarioRepository {
     }
 
     public void desactivarArticulo(String articuloId, OperationCallback callback) {
+        Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (usuario == null || !usuario.isAdmin()) {
+            callback.onError("Acceso denegado: solo el rol ADMIN puede desactivar artículos.");
+            return;
+        }
         db.collection("articulos").document(articuloId)
                 .update("activo", false)
                 .addOnSuccessListener(aVoid -> callback.onSuccess())

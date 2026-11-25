@@ -79,7 +79,7 @@
                     android:paddingVertical="2dp"
                     android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textStyle="bold"
-                    tools:text="PROFESORA" />
+                    tools:text="PROFESOR/A" />
 
                 <TextView
                     android:id="@+id/tvEstadoBadge"

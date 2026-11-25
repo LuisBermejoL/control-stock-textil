@@ -9,11 +9,11 @@
         android:icon="@android:drawable/ic_menu_camera"
         app:showAsAction="always" />
 
-    <!-- Avatar de Perfil de Usuario (Ver, Editar, Cerrar sesión) -->
+    <!-- Avatar de Perfil de Usuario (Ver, Editar, Cerrar sesión) con vista personalizada más grande -->
     <item
         android:id="@+id/action_perfil"
         android:title="Mi Perfil"
-        android:icon="@android:drawable/ic_menu_myplaces"
+        app:actionLayout="@layout/menu_item_perfil"
         app:showAsAction="always" />
 
 </menu>

@@ -6,11 +6,13 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
-import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
-import android.widget.Toast;
+import android.text.Layout;
+import android.text.StaticLayout;
+import android.text.TextPaint;
+import android.text.TextUtils;
 
 import androidx.core.content.FileProvider;
 
@@ -109,7 +111,7 @@ public class QrCodeGenerator {
         paintHeaderText.setColor(Color.WHITE);
         paintHeaderText.setTextSize(20);
         paintHeaderText.setFakeBoldText(true);
-        canvas.drawText("ALMACÉN TEXTIL FP · IES LEONARDO DA VINCI", 24, 38, paintHeaderText);
+        canvas.drawText("CONTROL DE STOCK TEXTIL", 24, 38, paintHeaderText);
 
         // Código QR
         String contenidoQr = articulo.getReferencia() != null && !articulo.getReferencia().trim().isEmpty()
@@ -124,25 +126,36 @@ public class QrCodeGenerator {
 
         // Textos del artículo en la mitad derecha
         int leftText = 380;
+        int maxRightWidth = ancho - leftText - 20;
+
         Paint paintRef = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintRef.setColor(Color.BLACK);
         paintRef.setTextSize(26);
         paintRef.setFakeBoldText(true);
         canvas.drawText("REF: " + (articulo.getReferencia() != null ? articulo.getReferencia() : "S/R"), leftText, 110, paintRef);
 
-        Paint paintNombre = new Paint(Paint.ANTI_ALIAS_FLAG);
+        TextPaint paintNombre = new TextPaint(Paint.ANTI_ALIAS_FLAG);
         paintNombre.setColor(Color.DKGRAY);
         paintNombre.setTextSize(22);
         paintNombre.setFakeBoldText(true);
         String nombre = articulo.getNombreCompleto();
-        if (nombre.length() > 24) nombre = nombre.substring(0, 22) + "...";
-        canvas.drawText(nombre, leftText, 155, paintNombre);
+        StaticLayout layoutNombre = StaticLayout.Builder.obtain(nombre, 0, nombre.length(), paintNombre, maxRightWidth)
+                .setMaxLines(2)
+                .setEllipsize(TextUtils.TruncateAt.END)
+                .build();
+        canvas.save();
+        canvas.translate(leftText, 130);
+        layoutNombre.draw(canvas);
+        canvas.restore();
+
+        int yOffset = 130 + layoutNombre.getHeight() + 15;
 
         Paint paintCategoria = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintCategoria.setColor(Color.rgb(2, 136, 209));
         paintCategoria.setTextSize(20);
         paintCategoria.setFakeBoldText(true);
-        canvas.drawText("Cat: " + (articulo.getCategoria() != null ? articulo.getCategoria() : "GENERAL"), leftText, 200, paintCategoria);
+        canvas.drawText("Cat: " + (articulo.getCategoria() != null ? articulo.getCategoria() : "GENERAL"), leftText, yOffset, paintCategoria);
+        yOffset += 35;
 
         Paint paintUbicacion = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintUbicacion.setColor(Color.rgb(198, 40, 40)); // Rojo indicativo
@@ -152,18 +165,19 @@ public class QrCodeGenerator {
         if (articulo.getUbicacion() != null) {
             ubicacionStr = articulo.getUbicacion().getFormatoCompleto();
         }
-        if (ubicacionStr.length() > 24) ubicacionStr = ubicacionStr.substring(0, 22) + "...";
-        canvas.drawText("📍 " + ubicacionStr, leftText, 250, paintUbicacion);
+        canvas.drawText("📍 " + ubicacionStr, leftText, yOffset, paintUbicacion);
+        yOffset += 35;
 
         Paint paintDetalles = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintDetalles.setColor(Color.GRAY);
         paintDetalles.setTextSize(18);
         String medidaStr = "Unidad: " + (articulo.getUnidadMedida() != null ? articulo.getUnidadMedida() : "Uds");
-        canvas.drawText(medidaStr, leftText, 295, paintDetalles);
+        canvas.drawText(medidaStr, leftText, yOffset, paintDetalles);
+        yOffset += 30;
 
-        String provStr = "Prov: " + (articulo.getProveedor() != null && !articulo.getProveedor().isEmpty() ? articulo.getProveedor() : "General");
-        if (provStr.length() > 26) provStr = provStr.substring(0, 24) + "...";
-        canvas.drawText(provStr, leftText, 335, paintDetalles);
+        if (articulo.getProveedor() != null && !articulo.getProveedor().isEmpty()) {
+            canvas.drawText("Prov: " + articulo.getProveedor(), leftText, yOffset, paintDetalles);
+        }
 
         // Pie de tarjeta
         Paint paintFooter = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -227,29 +241,43 @@ public class QrCodeGenerator {
         paintBorder.setStrokeWidth(1);
         paintBorder.setColor(Color.LTGRAY);
 
+        Paint paintDivider = new Paint();
+        paintDivider.setStyle(Paint.Style.STROKE);
+        paintDivider.setStrokeWidth(0.5f);
+        paintDivider.setColor(Color.LTGRAY);
+
         Paint paintHeader = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintHeader.setColor(Color.DKGRAY);
-        paintHeader.setTextSize(8);
+        paintHeader.setTextSize(8.5f);
         paintHeader.setFakeBoldText(true);
+
+        Paint paintHeaderCat = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paintHeaderCat.setColor(Color.rgb(2, 136, 209));
+        paintHeaderCat.setTextSize(8f);
+        paintHeaderCat.setFakeBoldText(true);
 
         Paint paintRef = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintRef.setColor(Color.BLACK);
-        paintRef.setTextSize(12);
+        paintRef.setTextSize(12f);
         paintRef.setFakeBoldText(true);
 
-        Paint paintNombre = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paintNombre.setColor(Color.DKGRAY);
-        paintNombre.setTextSize(10);
-        paintNombre.setFakeBoldText(true);
+        TextPaint paintNombreCompleto = new TextPaint(Paint.ANTI_ALIAS_FLAG);
+        paintNombreCompleto.setColor(Color.BLACK);
+        paintNombreCompleto.setTextSize(10.5f);
+        paintNombreCompleto.setFakeBoldText(true);
 
         Paint paintUbicacion = new Paint(Paint.ANTI_ALIAS_FLAG);
         paintUbicacion.setColor(Color.rgb(180, 20, 20));
-        paintUbicacion.setTextSize(10);
+        paintUbicacion.setTextSize(9.5f);
         paintUbicacion.setFakeBoldText(true);
 
         Paint paintSub = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paintSub.setColor(Color.GRAY);
-        paintSub.setTextSize(8);
+        paintSub.setColor(Color.DKGRAY);
+        paintSub.setTextSize(8.5f);
+
+        Paint paintExtra = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paintExtra.setColor(Color.GRAY);
+        paintExtra.setTextSize(7.5f);
 
         for (int p = 0; p < totalPages; p++) {
             PdfDocument.PageInfo pageInfo = new PdfDocument.PageInfo.Builder(pageWidth, pageHeight, p + 1).create();
@@ -269,42 +297,97 @@ public class QrCodeGenerator {
 
                 Articulo art = articulos.get(i);
 
-                // Dibujar marco de corte de etiqueta
+                // Marco de corte redondeado
                 canvas.drawRoundRect(new RectF(x, y, x + cardWidth, y + cardHeight), 8, 8, paintBorder);
 
-                // Encabezado
-                canvas.drawText("FP TEXTIL · IES LEONARDO", x + 10, y + 15, paintHeader);
+                // Encabezado superior neutro
+                canvas.drawText("CONTROL DE STOCK TEXTIL", x + 10, y + 14, paintHeader);
+                String catText = art.getCategoria() != null ? art.getCategoria() : "GENERAL";
+                float catWidth = paintHeaderCat.measureText(catText);
+                canvas.drawText(catText, x + cardWidth - 10 - catWidth, y + 14, paintHeaderCat);
 
-                // Generar QR pequeño (110x110)
+                // Línea separadora del encabezado
+                canvas.drawLine(x + 6, y + 19, x + cardWidth - 6, y + 19, paintDivider);
+
+                // Código QR (92x92 pt)
                 String contenidoQr = art.getReferencia() != null && !art.getReferencia().trim().isEmpty()
                         ? art.getReferencia().trim()
                         : (art.getId() != null ? art.getId() : "S/R");
-                Bitmap qrBmp = generarQrBitmap(contenidoQr, 100, 100);
+                Bitmap qrBmp = generarQrBitmap(contenidoQr, 92, 92);
                 if (qrBmp != null) {
-                    canvas.drawBitmap(qrBmp, x + 8, y + 22, null);
+                    canvas.drawBitmap(qrBmp, x + 8, y + 25, null);
                 }
 
-                // Textos a la derecha del QR
-                int textX = x + 116;
+                // Columna lateral derecha del QR (desde x + 108 hasta el margen)
+                int textX = x + 108;
+                int rightWidth = cardWidth - 116;
+
+                // Referencia
                 String refStr = "REF: " + (art.getReferencia() != null ? art.getReferencia() : "S/R");
-                if (refStr.length() > 18) refStr = refStr.substring(0, 16) + "...";
-                canvas.drawText(refStr, textX, y + 36, paintRef);
+                if (refStr.length() > 16) {
+                    paintRef.setTextSize(10.5f);
+                } else {
+                    paintRef.setTextSize(12f);
+                }
+                canvas.drawText(refStr, textX, y + 38, paintRef);
 
-                String nomStr = art.getNombreCompleto();
-                if (nomStr.length() > 20) nomStr = nomStr.substring(0, 18) + "...";
-                canvas.drawText(nomStr, textX, y + 54, paintNombre);
-
+                // Ubicación en almacén
                 String ubiStr = "📍 " + (art.getUbicacion() != null ? art.getUbicacion().getFormatoCompleto() : "Sin Ubicación");
-                if (ubiStr.length() > 20) ubiStr = ubiStr.substring(0, 18) + "...";
-                canvas.drawText(ubiStr, textX, y + 74, paintUbicacion);
+                if (paintUbicacion.measureText(ubiStr) > rightWidth && ubiStr.length() > 22) {
+                    ubiStr = ubiStr.substring(0, 20) + "...";
+                }
+                canvas.drawText(ubiStr, textX, y + 54, paintUbicacion);
 
-                String catStr = "Cat: " + (art.getCategoria() != null ? art.getCategoria() : "GENERAL") + " (" + (art.getUnidadMedida() != null ? art.getUnidadMedida() : "Uds") + ")";
-                if (catStr.length() > 22) catStr = catStr.substring(0, 20) + "...";
-                canvas.drawText(catStr, textX, y + 92, paintSub);
+                // Color
+                String colorStr = "Color: " + (art.getColor() != null && !art.getColor().isEmpty() ? art.getColor() : "No especificado");
+                if (paintSub.measureText(colorStr) > rightWidth && colorStr.length() > 22) {
+                    colorStr = colorStr.substring(0, 20) + "...";
+                }
+                canvas.drawText(colorStr, textX, y + 70, paintSub);
 
-                String provStr = "Prov: " + (art.getProveedor() != null ? art.getProveedor() : "Gral");
-                if (provStr.length() > 22) provStr = provStr.substring(0, 20) + "...";
-                canvas.drawText(provStr, textX, y + 108, paintSub);
+                // Proveedor
+                String provStr = "Prov: " + (art.getProveedor() != null && !art.getProveedor().isEmpty() ? art.getProveedor() : "General");
+                if (paintSub.measureText(provStr) > rightWidth && provStr.length() > 22) {
+                    provStr = provStr.substring(0, 20) + "...";
+                }
+                canvas.drawText(provStr, textX, y + 86, paintSub);
+
+                // Unidad de medida
+                String unidadMedidaStr = "Unidad: " + (art.getUnidadMedida() != null ? art.getUnidadMedida() : "Uds");
+                canvas.drawText(unidadMedidaStr, textX, y + 102, paintSub);
+
+                // Línea separadora inferior
+                canvas.drawLine(x + 6, y + 122, x + cardWidth - 6, y + 122, paintDivider);
+
+                // Sección inferior completa: Nombre del artículo multilínea
+                String nomStr = art.getNombreCompleto();
+                int fullWidth = cardWidth - 20;
+                StaticLayout layoutNombre = StaticLayout.Builder.obtain(nomStr, 0, nomStr.length(), paintNombreCompleto, fullWidth)
+                        .setMaxLines(2)
+                        .setEllipsize(TextUtils.TruncateAt.END)
+                        .build();
+
+                canvas.save();
+                canvas.translate(x + 10, y + 127);
+                layoutNombre.draw(canvas);
+                canvas.restore();
+
+                // Detalles adicionales a pie de tarjeta (Composición, ancho útil)
+                StringBuilder extraInfo = new StringBuilder();
+                if (art.getAnchoUtil() != null) {
+                    extraInfo.append("Ancho: ").append(art.getAnchoUtil()).append("m ");
+                }
+                if (art.getComposicion() != null && !art.getComposicion().isEmpty()) {
+                    extraInfo.append("· Comp: ").append(art.getComposicion()).append(" ");
+                }
+                if (art.getObservaciones() != null && !art.getObservaciones().isEmpty()) {
+                    extraInfo.append("· ").append(art.getObservaciones());
+                }
+                if (extraInfo.length() > 0) {
+                    String extraStr = extraInfo.toString().trim();
+                    if (extraStr.length() > 50) extraStr = extraStr.substring(0, 48) + "...";
+                    canvas.drawText(extraStr, x + 10, y + cardHeight - 8, paintExtra);
+                }
             }
 
             pdfDocument.finishPage(page);

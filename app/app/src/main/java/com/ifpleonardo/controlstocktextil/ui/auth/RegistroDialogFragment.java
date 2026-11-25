@@ -113,7 +113,7 @@ public class RegistroDialogFragment extends DialogFragment {
             public void onSuccess(Usuario usuario) {
                 if (!isAdded()) return;
                 setLoading(false);
-                Toast.makeText(requireContext(), "Cuenta creada con éxito. Bienvenida, " + usuario.getNombre(), Toast.LENGTH_LONG).show();
+                Toast.makeText(requireContext(), "Cuenta creada en modo Lectura. Bienvenido/a, " + usuario.getNombre(), Toast.LENGTH_LONG).show();
                 dismiss();
 
                 Intent intent = new Intent(requireActivity(), MainActivity.class);

@@ -2,10 +2,8 @@ package com.ifpleonardo.controlstocktextil;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
 import android.view.MenuItem;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
@@ -14,6 +12,7 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 
+import com.bumptech.glide.Glide;
 import com.ifpleonardo.controlstocktextil.data.model.Usuario;
 import com.ifpleonardo.controlstocktextil.data.repository.AuthRepository;
 import com.ifpleonardo.controlstocktextil.databinding.ActivityMainBinding;
@@ -70,8 +69,7 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-        setSupportActionBar(binding.topAppBar);
-
+        setupTopBarListeners();
         setupFragmentos();
         setupBottomNavigation();
         setupObservadorUsuario();
@@ -132,22 +130,32 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void setupTopBarListeners() {
+        binding.btnTopScanner.setOnClickListener(v ->
+                startActivity(new Intent(this, ScannerActivity.class)));
+
+        binding.btnTopPerfil.setOnClickListener(v -> {
+            PerfilBottomSheetDialogFragment dialog = PerfilBottomSheetDialogFragment.newInstance();
+            dialog.show(getSupportFragmentManager(), "PerfilBottomSheetDialogFragment");
+        });
+    }
+
     private void actualizarTitulosTopBar(int navItemId) {
-        if (binding.topAppBar == null)
+        if (binding.tvTopBarTitle == null || binding.tvTopBarSubtitle == null)
             return;
 
         if (navItemId == R.id.nav_inventario) {
-            binding.topAppBar.setTitle("Inventario Textil");
-            binding.topAppBar.setSubtitle("Almacén FP Confección");
+            binding.tvTopBarTitle.setText("Inventario Textil");
+            binding.tvTopBarSubtitle.setText("Almacén y Gestión Textil");
         } else if (navItemId == R.id.nav_historial) {
-            binding.topAppBar.setTitle("Historial de Movimientos");
-            binding.topAppBar.setSubtitle("Registro inmutable de almacén");
+            binding.tvTopBarTitle.setText("Historial de Movimientos");
+            binding.tvTopBarSubtitle.setText("Registro inmutable de almacén");
         } else if (navItemId == R.id.nav_excel) {
-            binding.topAppBar.setTitle("Excel y Etiquetas QR");
-            binding.topAppBar.setSubtitle("Carga masiva y códigos de estantería");
+            binding.tvTopBarTitle.setText("Excel y Etiquetas QR");
+            binding.tvTopBarSubtitle.setText("Carga masiva y códigos de estantería");
         } else if (navItemId == R.id.nav_profesoras) {
-            binding.topAppBar.setTitle("Gestión de Profesoras");
-            binding.topAppBar.setSubtitle("Administración de accesos");
+            binding.tvTopBarTitle.setText("Gestión de Usuarios");
+            binding.tvTopBarSubtitle.setText("Administración de accesos");
         }
     }
 
@@ -158,6 +166,8 @@ public class MainActivity extends AppCompatActivity {
                 redirigirALogin();
                 return;
             }
+
+            actualizarAvatarTopBar(usuario);
 
             // Si es profesora, ocultar la pestaña de profesoras de la barra inferior
             MenuItem itemProfesoras = binding.bottomNavigation.getMenu().findItem(R.id.nav_profesoras);
@@ -175,24 +185,17 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(@NonNull MenuItem item) {
-        int id = item.getItemId();
-        if (id == R.id.action_scanner) {
-            startActivity(new Intent(this, ScannerActivity.class));
-            return true;
-        } else if (id == R.id.action_perfil) {
-            PerfilBottomSheetDialogFragment dialog = PerfilBottomSheetDialogFragment.newInstance();
-            dialog.show(getSupportFragmentManager(), "PerfilBottomSheetDialogFragment");
-            return true;
+    private void actualizarAvatarTopBar(Usuario usuario) {
+        if (binding == null || binding.ivTopPerfilAvatar == null) return;
+        if (usuario.getFotoUrl() != null && !usuario.getFotoUrl().trim().isEmpty()) {
+            Glide.with(this)
+                    .load(usuario.getFotoUrl())
+                    .circleCrop()
+                    .placeholder(R.drawable.ic_donut_bitten)
+                    .into(binding.ivTopPerfilAvatar);
+        } else {
+            binding.ivTopPerfilAvatar.setImageResource(R.drawable.ic_donut_bitten);
         }
-        return super.onOptionsItemSelected(item);
     }
 
     private void redirigirALogin() {

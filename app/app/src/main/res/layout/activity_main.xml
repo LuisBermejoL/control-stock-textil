@@ -15,13 +15,97 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <com.google.android.material.appbar.MaterialToolbar
-            android:id="@+id/topAppBar"
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/topAppBarContainer"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:title="Inventario Textil"
-            app:subtitle="Almacén FP Confección"
-            app:titleCentered="false" />
+            android:layout_height="wrap_content"
+            android:minHeight="?attr/actionBarSize"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="8dp">
+
+            <LinearLayout
+                android:id="@+id/llTopBarTitles"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:orientation="vertical"
+                app:layout_constrainedWidth="true"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/btnTopScanner"
+                app:layout_constraintHorizontal_bias="0"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:id="@+id/tvTopBarTitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Inventario Textil"
+                    android:textAppearance="?attr/textAppearanceTitleLarge"
+                    android:textColor="?attr/colorOnSurface" />
+
+                <TextView
+                    android:id="@+id/tvTopBarSubtitle"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="Almacén y Gestión Textil"
+                    android:textAppearance="?attr/textAppearanceBodyMedium"
+                    android:textColor="?attr/colorOnSurfaceVariant" />
+            </LinearLayout>
+
+            <!-- Botón grande de Escáner QR centrado justo entre el texto y el icono de perfil -->
+            <ImageButton
+                android:id="@+id/btnTopScanner"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Escanear Código"
+                android:padding="2dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_camera_scanner"
+                app:layout_constraintBottom_toBottomOf="@id/llTopBarTitles"
+                app:layout_constraintEnd_toStartOf="@id/btnTopPerfil"
+                app:layout_constraintStart_toEndOf="@id/llTopBarTitles"
+                app:layout_constraintTop_toTopOf="@id/llTopBarTitles" />
+
+            <!-- Botón grande de Perfil (48dp circulares, mismo alto que cámara y Título + Subtítulo) -->
+            <FrameLayout
+                android:id="@+id/btnTopPerfil"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginEnd="12dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="Mi Perfil"
+                android:focusable="true"
+                app:layout_constraintBottom_toBottomOf="@id/llTopBarTitles"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="@id/llTopBarTitles">
+
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:layout_gravity="center"
+                    app:cardBackgroundColor="@android:color/transparent"
+                    app:cardCornerRadius="24dp"
+                    app:cardElevation="0dp"
+                    app:strokeWidth="0dp">
+
+                    <ImageView
+                        android:id="@+id/ivTopPerfilAvatar"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:contentDescription="Mi Perfil"
+                        android:scaleType="centerCrop"
+                        android:src="@drawable/ic_donut_bitten" />
+                </com.google.android.material.card.MaterialCardView>
+            </FrameLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
 
     </com.google.android.material.appbar.AppBarLayout>
 

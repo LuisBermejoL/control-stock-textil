@@ -30,7 +30,7 @@ public class EditarUsuarioDialogFragment extends DialogFragment {
     private static final String ARG_USUARIO = "arg_usuario";
     private DialogEditarUsuarioBinding binding;
     private Usuario usuario;
-    private static final String[] ROLES = {"PROFESORA", "ADMIN"};
+    private static final String[] ROLES = {"LECTOR", "PROFESOR/A", "ADMIN"};
 
     public static EditarUsuarioDialogFragment newInstance(Usuario usuario) {
         EditarUsuarioDialogFragment fragment = new EditarUsuarioDialogFragment();
@@ -59,7 +59,7 @@ public class EditarUsuarioDialogFragment extends DialogFragment {
 
             ArrayAdapter<String> adapter = new ArrayAdapter<>(requireContext(), android.R.layout.simple_dropdown_item_1line, ROLES);
             binding.actvEditarRol.setAdapter(adapter);
-            binding.actvEditarRol.setText(usuario.getRol() != null ? usuario.getRol().toUpperCase() : ROLES[0], false);
+            binding.actvEditarRol.setText(usuario.getRolVisual(), false);
 
             actualizarBotonEstado();
         }
@@ -73,7 +73,7 @@ public class EditarUsuarioDialogFragment extends DialogFragment {
 
     private void actualizarBotonEstado() {
         if (usuario.isActivo()) {
-            binding.btnCambiarEstadoCuenta.setText("Desactivar Cuenta (Jubilación/Baja)");
+            binding.btnCambiarEstadoCuenta.setText("Desactivar Cuenta (Baja)");
             binding.btnCambiarEstadoCuenta.setIconResource(android.R.drawable.ic_delete);
         } else {
             binding.btnCambiarEstadoCuenta.setText("Reactivar Cuenta de Acceso");
@@ -86,7 +86,8 @@ public class EditarUsuarioDialogFragment extends DialogFragment {
 
         binding.btnGuardarEditarUsuario.setOnClickListener(v -> {
             String nuevoNombre = binding.etEditarNombre.getText() != null ? binding.etEditarNombre.getText().toString().trim() : "";
-            String nuevoRol = binding.actvEditarRol.getText().toString().trim();
+            String nuevoRolSeleccionado = binding.actvEditarRol.getText().toString().trim();
+            String nuevoRol = Usuario.mapRolVisualARolFirestore(nuevoRolSeleccionado);
 
             if (nuevoNombre.isEmpty()) {
                 binding.tilEditarNombre.setError("Introduce el nombre completo");
@@ -124,7 +125,7 @@ public class EditarUsuarioDialogFragment extends DialogFragment {
             String accion = nuevoEstado ? "reactivar" : "desactivar";
             String explicacion = nuevoEstado
                     ? "¿Deseas volver a habilitar el acceso a esta cuenta?"
-                    : "¿Deseas desactivar esta cuenta? La profesora ya no podrá iniciar sesión, pero todo su historial de movimientos pasados se conservará intacto.";
+                    : "¿Deseas desactivar esta cuenta? El usuario ya no podrá iniciar sesión, pero todo su historial de movimientos pasados se conservará intacto.";
 
             new AlertDialog.Builder(requireContext())
                     .setTitle("Confirmar " + accion)

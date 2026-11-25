@@ -68,7 +68,7 @@ public class MovimientoDialogFragment extends DialogFragment {
 
         if (articulo != null) {
             String unidad = articulo.getUnidadMedida() != null ? articulo.getUnidadMedida() : "";
-            binding.tvStockActualDialogo.setText("Stock actual: " + decimalFormat.format(articulo.getStockActual()) + " " + unidad);
+            binding.tvStockActualDialogo.setText("Stock actual: " + Articulo.formatearStockConUnidad(articulo.getStockActual(), unidad, decimalFormat));
             binding.tilCantidad.setHint("Cantidad (" + unidad + ")");
         }
 
@@ -122,7 +122,7 @@ public class MovimientoDialogFragment extends DialogFragment {
                         @Override
                         public void onSuccess(double nuevoStock) {
                             if (getContext() == null) return;
-                            Toast.makeText(getContext(), "Movimiento registrado con éxito. Nuevo stock: " + decimalFormat.format(nuevoStock), Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "Movimiento registrado con éxito. Nuevo stock: " + Articulo.formatearStockConUnidad(nuevoStock, articulo.getUnidadMedida(), decimalFormat), Toast.LENGTH_SHORT).show();
                             if (listener != null) {
                                 listener.onMovimientoCompletado(nuevoStock);
                             }

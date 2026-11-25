@@ -150,7 +150,9 @@ public class UsuarioRepository {
                                         callback.onSuccess();
                                     })
                                     .addOnFailureListener(e -> {
-                                        secondaryAuth.signOut();
+                                        // Evitar cuenta huérfana en Auth si falla la escritura en Firestore
+                                        authResult.getUser().delete()
+                                                .addOnCompleteListener(task -> secondaryAuth.signOut());
                                         callback.onError("Error al guardar perfil en Firestore: " + e.getLocalizedMessage());
                                     });
                         } else {

@@ -3,12 +3,15 @@ package com.ifpleonardo.controlstocktextil.ui.admin;
 import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.ifpleonardo.controlstocktextil.data.model.Usuario;
+import com.ifpleonardo.controlstocktextil.data.repository.AuthRepository;
 import com.ifpleonardo.controlstocktextil.data.repository.UsuarioRepository;
 import com.ifpleonardo.controlstocktextil.databinding.ActivityGestionUsuariosBinding;
 
@@ -25,6 +28,14 @@ public class GestionUsuariosActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (usuario == null || !usuario.isAdmin()) {
+            Toast.makeText(this, "Acceso restringido a administradores", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
         binding = ActivityGestionUsuariosBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 

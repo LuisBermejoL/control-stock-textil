@@ -20,22 +20,42 @@
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
-        <!-- Avatar circular -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            app:cardCornerRadius="32dp"
-            app:cardElevation="0dp"
-            app:strokeColor="?attr/colorPrimary"
-            app:strokeWidth="2dp">
+        <!-- Contenedor del Avatar circular proporcionado al alto de Nombre + Email + Rol -->
+        <FrameLayout
+            android:layout_width="96dp"
+            android:layout_height="96dp">
 
-            <ImageView
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="12dp"
-                android:src="@android:drawable/ic_menu_myplaces"
-                app:tint="?attr/colorPrimary" />
-        </com.google.android.material.card.MaterialCardView>
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardPerfilAvatar"
+                android:layout_width="92dp"
+                android:layout_height="92dp"
+                android:layout_gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                app:cardCornerRadius="46dp"
+                app:cardElevation="2dp"
+                app:strokeColor="?attr/colorPrimary"
+                app:strokeWidth="2dp">
+
+                <ImageView
+                    android:id="@+id/ivPerfilAvatar"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:contentDescription="Foto o avatar de perfil"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_donut_bitten" />
+
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Barra de progreso al subir foto -->
+            <ProgressBar
+                android:id="@+id/pbSubiendoFotoPerfil"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="0dp"
@@ -48,7 +68,7 @@
                 android:id="@+id/tvPerfilNombre"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nombre Profesora"
+                android:text="Nombre Usuaria"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
                 android:textStyle="bold" />
 
@@ -57,7 +77,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="profesora@instituto.es"
+                android:text="usuario@correo.com"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?android:attr/textColorSecondary" />
 
@@ -68,7 +88,8 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="6dp"
                 android:clickable="false"
-                android:text="PROFESORA" />
+                android:text="PROFESOR/A"
+                app:chipMinTouchTargetSize="0dp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -79,6 +100,16 @@
         android:background="?android:attr/listDivider" />
 
     <!-- Opciones del Perfil -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnCambiarFotoPerfil"
+        style="@style/Widget.Material3.Button.TonalButton"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginBottom="10dp"
+        android:text="Añadir foto de perfil"
+        app:cornerRadius="12dp"
+        app:icon="@android:drawable/ic_menu_camera" />
+
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnEditarPerfil"
         style="@style/Widget.Material3.Button.TonalButton"

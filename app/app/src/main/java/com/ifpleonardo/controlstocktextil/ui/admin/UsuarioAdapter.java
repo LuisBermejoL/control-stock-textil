@@ -84,16 +84,16 @@ public class UsuarioAdapter extends RecyclerView.Adapter<UsuarioAdapter.UsuarioV
             binding.tvAvatarInicial.setText(inicial);
 
             // Badge de Rol
-            String rol = u.getRol() != null ? u.getRol().toUpperCase() : "PROFESORA";
-            binding.tvRolBadge.setText(rol);
+            String rolVisual = u.getRolVisual();
+            binding.tvRolBadge.setText(rolVisual);
 
             // Estado (Activo / Inactivo)
             if (u.isActivo()) {
-                binding.tvEstadoBadge.setText("🟢 Activa");
+                binding.tvEstadoBadge.setText("🟢 Activo");
                 binding.tvEstadoBadge.setTextColor(ContextCompat.getColor(binding.getRoot().getContext(), android.R.color.holo_green_dark));
                 binding.getRoot().setAlpha(1.0f);
             } else {
-                binding.tvEstadoBadge.setText("⚪ Inactiva (Jubilada/Baja)");
+                binding.tvEstadoBadge.setText("⚪ Inactivo (Baja)");
                 binding.tvEstadoBadge.setTextColor(Color.GRAY);
                 binding.getRoot().setAlpha(0.6f);
             }

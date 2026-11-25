@@ -84,7 +84,7 @@ public class MovimientoAdapter extends RecyclerView.Adapter<MovimientoAdapter.Mo
 
             binding.tvCantidadMovimiento.setText("Cantidad: " + signo + decimalFormat.format(cant) + " · Stock resultante: " + decimalFormat.format(res));
 
-            binding.tvUsuarioMovimiento.setText("👤 Profesora: " + (m.getUsuarioNombre() != null ? m.getUsuarioNombre() : "Desconocido"));
+            binding.tvUsuarioMovimiento.setText("👤 Usuario: " + (m.getUsuarioNombre() != null ? m.getUsuarioNombre() : "Desconocido"));
 
             if (m.getObservaciones() != null && !m.getObservaciones().trim().isEmpty()) {
                 binding.tvObservacionesMovimiento.setVisibility(View.VISIBLE);

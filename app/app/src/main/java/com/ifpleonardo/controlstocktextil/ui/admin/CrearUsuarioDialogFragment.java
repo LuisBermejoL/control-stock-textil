@@ -12,6 +12,7 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
 
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.ifpleonardo.controlstocktextil.data.model.Usuario;
 import com.ifpleonardo.controlstocktextil.data.repository.UsuarioRepository;
 import com.ifpleonardo.controlstocktextil.databinding.DialogCrearUsuarioBinding;
 
@@ -24,7 +25,7 @@ import com.ifpleonardo.controlstocktextil.databinding.DialogCrearUsuarioBinding;
 public class CrearUsuarioDialogFragment extends DialogFragment {
 
     private DialogCrearUsuarioBinding binding;
-    private static final String[] ROLES = {"PROFESORA", "ADMIN"};
+    private static final String[] ROLES = {"LECTOR", "PROFESOR/A", "ADMIN"};
 
     public static CrearUsuarioDialogFragment newInstance() {
         return new CrearUsuarioDialogFragment();
@@ -53,7 +54,8 @@ public class CrearUsuarioDialogFragment extends DialogFragment {
             String nombre = binding.etNuevoNombre.getText() != null ? binding.etNuevoNombre.getText().toString().trim() : "";
             String email = binding.etNuevoEmail.getText() != null ? binding.etNuevoEmail.getText().toString().trim() : "";
             String password = binding.etNuevoPassword.getText() != null ? binding.etNuevoPassword.getText().toString() : "";
-            String rol = binding.actvNuevoRol.getText().toString().trim();
+            String rolSeleccionado = binding.actvNuevoRol.getText().toString().trim();
+            String rol = Usuario.mapRolVisualARolFirestore(rolSeleccionado);
 
             if (nombre.isEmpty()) {
                 binding.tilNuevoNombre.setError("Introduce el nombre completo");
@@ -90,7 +92,7 @@ public class CrearUsuarioDialogFragment extends DialogFragment {
                         @Override
                         public void onSuccess() {
                             if (getContext() == null) return;
-                            Toast.makeText(getContext(), "Profesora creada con éxito", Toast.LENGTH_SHORT).show();
+                            Toast.makeText(getContext(), "Usuario creado con éxito", Toast.LENGTH_SHORT).show();
                             dismiss();
                         }
 

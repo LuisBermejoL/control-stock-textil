@@ -6,6 +6,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.ListenerRegistration;
 import com.ifpleonardo.controlstocktextil.data.model.Usuario;
 
 /**
@@ -27,6 +28,7 @@ public class AuthRepository {
     private static AuthRepository instance;
     private final FirebaseAuth auth;
     private final FirebaseFirestore db;
+    private ListenerRegistration perfilUsuarioListener;
 
     // LiveData reactivo que expone el usuario logueado actualmente a toda la aplicación
     private final MutableLiveData<Usuario> usuarioActualLiveData = new MutableLiveData<>();
@@ -100,6 +102,10 @@ public class AuthRepository {
     }
 
     public void cargarPerfilUsuario(String uid, AuthCallback callback) {
+        if (uid == null || uid.trim().isEmpty()) {
+            callback.onError("Sesión inválida.");
+            return;
+        }
         db.collection("usuarios").document(uid).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     if (documentSnapshot.exists()) {
@@ -109,27 +115,63 @@ public class AuthRepository {
 
                             // Validación de cuenta activa (jubilación/desactivación)
                             if (!usuario.isActivo()) {
-                                auth.signOut();
-                                usuarioActualLiveData.postValue(null);
+                                logout();
                                 callback.onError("Esta cuenta ha sido desactivada por administración.");
                                 return;
                             }
 
                             usuarioActualLiveData.postValue(usuario);
+                            iniciarEscuchaPerfilActual(uid);
                             callback.onSuccess(usuario);
                         } else {
                             callback.onError("El perfil del usuario no tiene un formato válido.");
                         }
                     } else {
                         // Si el usuario no tiene documento en Firestore aún
-                        auth.signOut();
+                        logout();
                         callback.onError("El usuario no tiene un perfil asignado en el sistema.");
                     }
                 })
                 .addOnFailureListener(e -> callback.onError("Error al cargar datos del usuario: " + e.getLocalizedMessage()));
     }
 
+    /**
+     * Escucha en tiempo real cambios en el documento del usuario autenticado
+     * (por ejemplo, si un ADMIN asciende el rol de LECTOR a PROFESOR/A o desactiva la cuenta).
+     */
+    private void iniciarEscuchaPerfilActual(String uid) {
+        detenerEscuchaPerfilActual();
+        perfilUsuarioListener = db.collection("usuarios").document(uid)
+                .addSnapshotListener((snapshot, error) -> {
+                    if (error != null || snapshot == null) return;
+                    if (auth.getCurrentUser() == null) return;
+
+                    if (!snapshot.exists()) {
+                        logout();
+                        return;
+                    }
+                    Usuario actualizado = snapshot.toObject(Usuario.class);
+                    if (actualizado != null) {
+                        actualizado.setId(snapshot.getId());
+                        if (!actualizado.isActivo()) {
+                            // Expulsión inmediata en caliente si se desactiva la cuenta
+                            logout();
+                            return;
+                        }
+                        usuarioActualLiveData.postValue(actualizado);
+                    }
+                });
+    }
+
+    private void detenerEscuchaPerfilActual() {
+        if (perfilUsuarioListener != null) {
+            perfilUsuarioListener.remove();
+            perfilUsuarioListener = null;
+        }
+    }
+
     public void logout() {
+        detenerEscuchaPerfilActual();
         UsuarioRepository.getInstance().detenerEscuchaUsuarios();
         InventarioRepository.getInstance().detenerEscuchaInventario();
         auth.signOut();
@@ -180,12 +222,14 @@ public class AuthRepository {
         nuevoUsuario.setId(firebaseUser.getUid());
         nuevoUsuario.setNombre(nombre);
         nuevoUsuario.setEmail(email);
-        nuevoUsuario.setRol("PROFESORA");
+        // Por principio de mínimo privilegio, las cuentas nuevas tienen acceso solo de lectura y descarga
+        nuevoUsuario.setRol("LECTOR");
         nuevoUsuario.setActivo(true);
 
         db.collection("usuarios").document(firebaseUser.getUid()).set(nuevoUsuario)
                 .addOnSuccessListener(aVoid -> {
                     usuarioActualLiveData.postValue(nuevoUsuario);
+                    iniciarEscuchaPerfilActual(firebaseUser.getUid());
                     callback.onSuccess(nuevoUsuario);
                 })
                 .addOnFailureListener(e -> {
@@ -280,5 +324,30 @@ public class AuthRepository {
                     }
                 })
                 .addOnFailureListener(e -> callback.onError("Error al actualizar perfil: " + e.getLocalizedMessage()));
+    }
+
+    /**
+     * Actualiza la URL de la foto de perfil del usuario actual en Cloud Firestore.
+     */
+    public void actualizarFotoPerfil(String nuevaFotoUrl, OperationCallback callback) {
+        FirebaseUser fUser = auth.getCurrentUser();
+        if (fUser == null) {
+            callback.onError("No hay sesión activa.");
+            return;
+        }
+
+        String urlLimpia = nuevaFotoUrl != null ? nuevaFotoUrl.trim() : "";
+
+        db.collection("usuarios").document(fUser.getUid())
+                .update("fotoUrl", urlLimpia)
+                .addOnSuccessListener(aVoid -> {
+                    Usuario actual = usuarioActualLiveData.getValue();
+                    if (actual != null) {
+                        actual.setFotoUrl(urlLimpia);
+                        usuarioActualLiveData.postValue(actual);
+                    }
+                    callback.onSuccess();
+                })
+                .addOnFailureListener(e -> callback.onError("Error al actualizar foto de perfil: " + e.getLocalizedMessage()));
     }
 }

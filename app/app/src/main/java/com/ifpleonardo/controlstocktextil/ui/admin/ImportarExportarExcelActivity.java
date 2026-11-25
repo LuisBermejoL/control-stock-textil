@@ -13,6 +13,8 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.ifpleonardo.controlstocktextil.data.model.Articulo;
+import com.ifpleonardo.controlstocktextil.data.model.Usuario;
+import com.ifpleonardo.controlstocktextil.data.repository.AuthRepository;
 import com.ifpleonardo.controlstocktextil.data.repository.InventarioRepository;
 import com.ifpleonardo.controlstocktextil.databinding.ActivityImportExportExcelBinding;
 import com.ifpleonardo.controlstocktextil.util.ExcelManager;
@@ -47,12 +49,17 @@ public class ImportarExportarExcelActivity extends AppCompatActivity {
         }
 
         setupListeners();
+
+        Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        boolean esAdmin = usuario != null && usuario.isAdmin();
+        binding.btnImportarExcel.setVisibility(esAdmin ? View.VISIBLE : View.GONE);
     }
 
     private void setupListeners() {
         binding.btnExportarExcel.setOnClickListener(v -> exportarInventario(true));
         binding.btnExportarCsv.setOnClickListener(v -> exportarInventario(false));
-        binding.btnImportarExcel.setOnClickListener(v -> filePickerLauncher.launch("*/*"));
+        binding.btnImportarExcel.setOnClickListener(v ->
+                filePickerLauncher.launch("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
     }
 
     private void exportarInventario(boolean formatoExcel) {
@@ -70,7 +77,7 @@ public class ImportarExportarExcelActivity extends AppCompatActivity {
                 public void onSuccess(File archivo) {
                     runOnUiThread(() -> {
                         ocultarCargando();
-                        ExcelManager.compartirArchivo(ImportarExportarExcelActivity.this, archivo,
+                        mostrarOpcionesArchivoGenerado(archivo,
                                 "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
                     });
                 }
@@ -89,7 +96,7 @@ public class ImportarExportarExcelActivity extends AppCompatActivity {
                 public void onSuccess(File archivo) {
                     runOnUiThread(() -> {
                         ocultarCargando();
-                        ExcelManager.compartirArchivo(ImportarExportarExcelActivity.this, archivo, "text/csv");
+                        mostrarOpcionesArchivoGenerado(archivo, "text/csv");
                     });
                 }
 
@@ -104,7 +111,62 @@ public class ImportarExportarExcelActivity extends AppCompatActivity {
         }
     }
 
+    private void mostrarOpcionesArchivoGenerado(File archivo, String mimeType) {
+        android.view.View dialogView = getLayoutInflater()
+                .inflate(com.ifpleonardo.controlstocktextil.R.layout.dialog_archivo_listo, null);
+
+        android.widget.TextView tvMensaje = dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.tvArchivoNombreMensaje);
+        tvMensaje.setText("¿Qué deseas hacer con \"" + archivo.getName() + "\"?");
+
+        AlertDialog dialog = new com.google.android.material.dialog.MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .create();
+
+        dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.btnGuardarEnDescargas).setOnClickListener(v -> {
+            dialog.dismiss();
+            mostrarCargando("Guardando en Descargas...");
+            ExcelManager.guardarEnDescargas(this, archivo, mimeType, new ExcelManager.ExportCallback() {
+                @Override
+                public void onSuccess(File guardado) {
+                    runOnUiThread(() -> {
+                        ocultarCargando();
+                        Toast.makeText(ImportarExportarExcelActivity.this,
+                                "Guardado en la carpeta Descargas: " + archivo.getName(),
+                                Toast.LENGTH_LONG).show();
+                    });
+                }
+
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(() -> {
+                        ocultarCargando();
+                        Toast.makeText(ImportarExportarExcelActivity.this, error, Toast.LENGTH_LONG).show();
+                    });
+                }
+            });
+        });
+
+        dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.btnCompartirArchivo).setOnClickListener(v -> {
+            dialog.dismiss();
+            ExcelManager.compartirArchivo(ImportarExportarExcelActivity.this, archivo, mimeType);
+        });
+
+        dialogView.findViewById(com.ifpleonardo.controlstocktextil.R.id.btnCerrarDialogoArchivo).setOnClickListener(v -> dialog.dismiss());
+
+        dialog.show();
+    }
+
     private void procesarArchivoExcelSeleccionado(Uri uri) {
+        Usuario u = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
+        if (u == null || !u.isAdmin()) {
+            Toast.makeText(this, "Solo el rol ADMIN puede importar Excel", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        String errorValidacion = ExcelManager.validarArchivoImportacion(this, uri);
+        if (errorValidacion != null) {
+            Toast.makeText(this, errorValidacion, Toast.LENGTH_LONG).show();
+            return;
+        }
         mostrarCargando("Procesando y subiendo artículos del Excel...");
 
         try {
