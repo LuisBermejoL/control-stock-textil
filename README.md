@@ -1,4 +1,4 @@
-# Control de Stock Textil 🧵📱
+# Project App Storage 🧵📱
 
 Aplicación móvil nativa en Android diseñada para la gestión integral y en tiempo real del inventario en almacenes y talleres de **Confección, Moda y Diseño Textil**.
 
