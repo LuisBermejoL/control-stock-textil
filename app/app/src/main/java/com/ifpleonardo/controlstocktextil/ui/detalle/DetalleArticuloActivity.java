@@ -248,7 +248,7 @@ public class DetalleArticuloActivity extends AppCompatActivity {
     private void eliminarFotoArticulo() {
         new MaterialAlertDialogBuilder(this)
                 .setTitle("Eliminar fotografía")
-                .setMessage("¿Estás segura de que deseas quitar la foto de este artículo?")
+                .setMessage("¿Estás seguro/a de que deseas quitar la foto de este artículo?")
                 .setPositiveButton("Sí, eliminar", (dialog, which) -> {
                     articulo.setImagenUrl("");
                     mostrarFotoArticulo();
@@ -362,7 +362,7 @@ public class DetalleArticuloActivity extends AppCompatActivity {
     private void confirmarDesactivacion() {
         new AlertDialog.Builder(this)
                 .setTitle("Desactivar artículo")
-                .setMessage("¿Estás segura de que deseas desactivar este artículo del inventario activo?")
+                .setMessage("¿Estás seguro/a de que deseas desactivar este artículo del inventario activo?")
                 .setPositiveButton("Sí, desactivar", (dialog, which) -> {
                     InventarioRepository.getInstance().desactivarArticulo(articulo.getId(), new InventarioRepository.OperationCallback() {
                         @Override

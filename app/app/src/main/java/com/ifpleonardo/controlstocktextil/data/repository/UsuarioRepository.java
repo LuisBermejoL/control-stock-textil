@@ -156,13 +156,13 @@ public class UsuarioRepository {
                                         callback.onError("Error al guardar perfil en Firestore: " + e.getLocalizedMessage());
                                     });
                         } else {
-                            callback.onError("No se pudo obtener el UID de la nueva usuaria.");
+                            callback.onError("No se pudo obtener el UID del nuevo usuario.");
                         }
                     })
                     .addOnFailureListener(e -> callback.onError("Error de autenticación: " + e.getLocalizedMessage()));
 
         } catch (Exception e) {
-            callback.onError("Error general al registrar usuaria: " + e.getLocalizedMessage());
+            callback.onError("Error general al registrar usuario: " + e.getLocalizedMessage());
         }
     }
 

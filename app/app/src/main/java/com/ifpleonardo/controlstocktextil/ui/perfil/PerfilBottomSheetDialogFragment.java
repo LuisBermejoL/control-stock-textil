@@ -33,10 +33,13 @@ import java.io.File;
  * Panel inferior (BottomSheet) de perfil de usuario.
  * 
  * Funcionalidades:
- * 1. Muestra nombre, email institucional, rol activo y foto de perfil (o donut por defecto).
+ * 1. Muestra nombre, email institucional, rol activo y foto de perfil (o donut
+ * por defecto).
  * 2. Permite editar el nombre propio y cambiar la contraseña de acceso.
- * 3. Permite subir o actualizar la foto de perfil con compresión local y Cloudinary CDN.
- * 4. Cierre seguro de sesión (logout) con confirmación previa y limpieza de listeners.
+ * 3. Permite subir o actualizar la foto de perfil con compresión local y
+ * Cloudinary CDN.
+ * 4. Cierre seguro de sesión (logout) con confirmación previa y limpieza de
+ * listeners.
  */
 public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
@@ -44,15 +47,15 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
     private Uri cameraTempUri;
     private File cameraTempFile;
 
-    private final ActivityResultLauncher<String> galleryLauncher =
-            registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
+    private final ActivityResultLauncher<String> galleryLauncher = registerForActivityResult(
+            new ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
                     subirFotoACloudinary(uri, null);
                 }
             });
 
-    private final ActivityResultLauncher<Uri> cameraLauncher =
-            registerForActivityResult(new ActivityResultContracts.TakePicture(), success -> {
+    private final ActivityResultLauncher<Uri> cameraLauncher = registerForActivityResult(
+            new ActivityResultContracts.TakePicture(), success -> {
                 if (Boolean.TRUE.equals(success) && cameraTempUri != null) {
                     File temp = cameraTempFile;
                     cameraTempFile = null;
@@ -69,7 +72,8 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState) {
         binding = DialogPerfilUsuarioBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -119,9 +123,10 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
         String[] opciones;
         if (tieneFoto) {
-            opciones = new String[]{"📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería", "🗑️ Eliminar foto actual"};
+            opciones = new String[] { "📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería",
+                    "🗑️ Eliminar foto actual" };
         } else {
-            opciones = new String[]{"📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería"};
+            opciones = new String[] { "📷 Tomar foto con la Cámara", "🖼️ Seleccionar de la Galería" };
         }
 
         new MaterialAlertDialogBuilder(requireContext())
@@ -141,65 +146,74 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     private void lanzarCamara() {
         try {
-            File tempFile = new File(requireContext().getCacheDir(), "cam_perfil_" + System.currentTimeMillis() + ".jpg");
+            File tempFile = new File(requireContext().getCacheDir(),
+                    "cam_perfil_" + System.currentTimeMillis() + ".jpg");
             cameraTempFile = tempFile;
             cameraTempUri = FileProvider.getUriForFile(
                     requireContext(), requireContext().getPackageName() + ".fileprovider", tempFile);
             cameraLauncher.launch(cameraTempUri);
         } catch (Exception e) {
-            Toast.makeText(requireContext(), "Error al abrir cámara: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Error al abrir cámara: " + e.getLocalizedMessage(), Toast.LENGTH_SHORT)
+                    .show();
         }
     }
 
     private void subirFotoACloudinary(Uri uri, @Nullable File archivoCamaraTemporal) {
         if (binding == null) {
-            if (archivoCamaraTemporal != null && archivoCamaraTemporal.exists()) archivoCamaraTemporal.delete();
+            if (archivoCamaraTemporal != null && archivoCamaraTemporal.exists())
+                archivoCamaraTemporal.delete();
             return;
         }
         binding.pbSubiendoFotoPerfil.setVisibility(View.VISIBLE);
         binding.btnCambiarFotoPerfil.setEnabled(false);
 
-        CloudinaryUploader.comprimirYSubir(requireContext().getApplicationContext(), uri, archivoCamaraTemporal, true, new CloudinaryUploader.UploadCallback() {
-            @Override
-            public void onSuccess(String imageUrl) {
-                if (getActivity() == null) return;
-                AuthRepository.getInstance().actualizarFotoPerfil(imageUrl, new AuthRepository.OperationCallback() {
+        CloudinaryUploader.comprimirYSubir(requireContext().getApplicationContext(), uri, archivoCamaraTemporal, true,
+                new CloudinaryUploader.UploadCallback() {
                     @Override
-                    public void onSuccess() {
-                        if (binding != null) {
-                            binding.pbSubiendoFotoPerfil.setVisibility(View.GONE);
-                            binding.btnCambiarFotoPerfil.setEnabled(true);
-                        }
-                        if (isAdded() && getContext() != null) {
-                            Toast.makeText(getContext(), "Foto de perfil actualizada", Toast.LENGTH_SHORT).show();
-                        }
+                    public void onSuccess(String imageUrl) {
+                        if (getActivity() == null)
+                            return;
+                        AuthRepository.getInstance().actualizarFotoPerfil(imageUrl,
+                                new AuthRepository.OperationCallback() {
+                                    @Override
+                                    public void onSuccess() {
+                                        if (binding != null) {
+                                            binding.pbSubiendoFotoPerfil.setVisibility(View.GONE);
+                                            binding.btnCambiarFotoPerfil.setEnabled(true);
+                                        }
+                                        if (isAdded() && getContext() != null) {
+                                            Toast.makeText(getContext(), "Foto de perfil actualizada",
+                                                    Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onError(String error) {
+                                        if (binding != null) {
+                                            binding.pbSubiendoFotoPerfil.setVisibility(View.GONE);
+                                            binding.btnCambiarFotoPerfil.setEnabled(true);
+                                        }
+                                        if (isAdded() && getContext() != null) {
+                                            Toast.makeText(getContext(), "Error al guardar foto: " + error,
+                                                    Toast.LENGTH_LONG).show();
+                                        }
+                                    }
+                                });
                     }
 
                     @Override
                     public void onError(String error) {
+                        if (getActivity() == null)
+                            return;
                         if (binding != null) {
                             binding.pbSubiendoFotoPerfil.setVisibility(View.GONE);
                             binding.btnCambiarFotoPerfil.setEnabled(true);
                         }
                         if (isAdded() && getContext() != null) {
-                            Toast.makeText(getContext(), "Error al guardar foto: " + error, Toast.LENGTH_LONG).show();
+                            Toast.makeText(getContext(), "Error al subir foto: " + error, Toast.LENGTH_LONG).show();
                         }
                     }
                 });
-            }
-
-            @Override
-            public void onError(String error) {
-                if (getActivity() == null) return;
-                if (binding != null) {
-                    binding.pbSubiendoFotoPerfil.setVisibility(View.GONE);
-                    binding.btnCambiarFotoPerfil.setEnabled(true);
-                }
-                if (isAdded() && getContext() != null) {
-                    Toast.makeText(getContext(), "Error al subir foto: " + error, Toast.LENGTH_LONG).show();
-                }
-            }
-        });
     }
 
     private void eliminarFotoPerfil() {
@@ -229,27 +243,32 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
 
     private void mostrarDialogoEditarPerfil() {
         Usuario usuario = AuthRepository.getInstance().getUsuarioActualLiveData().getValue();
-        if (usuario == null) return;
+        if (usuario == null)
+            return;
 
         LinearLayout layout = new LinearLayout(requireContext());
         layout.setOrientation(LinearLayout.VERTICAL);
         layout.setPadding(48, 24, 48, 16);
 
-        TextInputLayout tilNombre = new TextInputLayout(requireContext(), null, com.google.android.material.R.style.Widget_Material3_TextInputLayout_OutlinedBox);
+        TextInputLayout tilNombre = new TextInputLayout(requireContext(), null,
+                com.google.android.material.R.style.Widget_Material3_TextInputLayout_OutlinedBox);
         tilNombre.setHint("Nombre y Apellidos");
         TextInputEditText etNombre = new TextInputEditText(tilNombre.getContext());
         etNombre.setText(usuario.getNombre());
         tilNombre.addView(etNombre);
         layout.addView(tilNombre);
 
-        TextInputLayout tilPassword = new TextInputLayout(requireContext(), null, com.google.android.material.R.style.Widget_Material3_TextInputLayout_OutlinedBox);
-        tilPassword.setHint("Nueva contraseña (dejar vacío para no cambiar)");
+        TextInputLayout tilPassword = new TextInputLayout(requireContext(), null,
+                com.google.android.material.R.style.Widget_Material3_TextInputLayout_OutlinedBox);
+        tilPassword.setHint("Nueva contraseña");
         tilPassword.setPasswordVisibilityToggleEnabled(true);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
         lp.topMargin = 24;
         tilPassword.setLayoutParams(lp);
         TextInputEditText etPassword = new TextInputEditText(tilPassword.getContext());
-        etPassword.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        etPassword.setInputType(
+                android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
         tilPassword.addView(etPassword);
         layout.addView(tilPassword);
 
@@ -265,20 +284,22 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
                         return;
                     }
 
-                    AuthRepository.getInstance().actualizarPerfil(nuevoNombre, nuevaPassword, new AuthRepository.OperationCallback() {
-                        @Override
-                        public void onSuccess() {
-                            Toast.makeText(requireContext(), "Perfil actualizado correctamente", Toast.LENGTH_SHORT).show();
-                            if (binding != null) {
-                                binding.tvPerfilNombre.setText(nuevoNombre);
-                            }
-                        }
+                    AuthRepository.getInstance().actualizarPerfil(nuevoNombre, nuevaPassword,
+                            new AuthRepository.OperationCallback() {
+                                @Override
+                                public void onSuccess() {
+                                    Toast.makeText(requireContext(), "Perfil actualizado correctamente",
+                                            Toast.LENGTH_SHORT).show();
+                                    if (binding != null) {
+                                        binding.tvPerfilNombre.setText(nuevoNombre);
+                                    }
+                                }
 
-                        @Override
-                        public void onError(String error) {
-                            Toast.makeText(requireContext(), "Error: " + error, Toast.LENGTH_LONG).show();
-                        }
-                    });
+                                @Override
+                                public void onError(String error) {
+                                    Toast.makeText(requireContext(), "Error: " + error, Toast.LENGTH_LONG).show();
+                                }
+                            });
                 })
                 .setNegativeButton("Cancelar", null)
                 .show();
@@ -287,7 +308,7 @@ public class PerfilBottomSheetDialogFragment extends BottomSheetDialogFragment {
     private void confirmarCerrarSesion() {
         new MaterialAlertDialogBuilder(requireContext())
                 .setTitle("Cerrar sesión")
-                .setMessage("¿Estás segura de que deseas salir?")
+                .setMessage("¿Estás seguro/a de que deseas salir?")
                 .setPositiveButton("Sí, salir", (dialog, which) -> {
                     dismiss();
                     AuthRepository.getInstance().logout();

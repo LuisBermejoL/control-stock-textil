@@ -68,7 +68,7 @@
                 android:id="@+id/tvPerfilNombre"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Nombre Usuaria"
+                android:text="Nombre Usuario"
                 android:textAppearance="?attr/textAppearanceTitleLarge"
                 android:textStyle="bold" />
 

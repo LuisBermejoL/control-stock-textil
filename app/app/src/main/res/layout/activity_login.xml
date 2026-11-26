@@ -20,26 +20,26 @@
 
             <!-- Encabezado / Logo -->
             <com.google.android.material.card.MaterialCardView
-                android:layout_width="80dp"
-                android:layout_height="80dp"
+                android:layout_width="96dp"
+                android:layout_height="96dp"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="20dp"
-                app:cardElevation="2dp"
-                app:strokeColor="?attr/colorPrimary"
-                app:strokeWidth="1dp">
+                app:cardBackgroundColor="@color/ic_launcher_bg"
+                app:cardCornerRadius="24dp"
+                app:cardElevation="3dp"
+                app:strokeWidth="0dp">
 
                 <ImageView
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
-                    android:padding="16dp"
-                    android:src="@android:drawable/ic_menu_agenda"
-                    app:tint="?attr/colorPrimary" />
+                    android:contentDescription="Logo APP-STOCK-TCPILDV"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/ic_launcher_art" />
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Stock Textil FP"
+                android:text="APP-STOCK-TCPILDV"
                 android:textAppearance="?attr/textAppearanceHeadlineMedium"
                 android:textStyle="bold" />
 
@@ -48,7 +48,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:layout_marginBottom="32dp"
-                android:text="Gestión de inventario textil"
+                android:text="Gestión de inventario TCPILDV"
                 android:textAppearance="?attr/textAppearanceBodyMedium"
                 android:textColor="?android:attr/textColorSecondary" />
 

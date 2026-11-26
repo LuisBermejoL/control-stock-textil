@@ -57,7 +57,7 @@ public class LoginActivity extends AppCompatActivity {
 
         viewModel.getUsuarioLogueado().observe(this, usuario -> {
             if (usuario != null) {
-                Toast.makeText(this, "Bienvenida, " + usuario.getNombre(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "Bienvenido/a, " + usuario.getNombre(), Toast.LENGTH_SHORT).show();
                 Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
